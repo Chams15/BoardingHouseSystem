@@ -30,13 +30,26 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $validated = $request->validated();
+        $user = $request->user();
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        // Update user-level fields
+        $user->fill(collect($validated)->only(['email'])->toArray());
+
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
         }
 
-        $request->user()->save();
+        $user->save();
+
+        // Update tenant profile fields
+        $profileData = collect($validated)->only(['full_name', 'contact_number', 'emergency_contact'])->toArray();
+        if (!empty($profileData)) {
+            $user->tenantProfile()->updateOrCreate(
+                ['user_id' => $user->user_id],
+                $profileData
+            );
+        }
 
         return to_route('profile.edit');
     }

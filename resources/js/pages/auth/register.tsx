@@ -27,19 +27,19 @@ export default function Register() {
                     <>
                         <div className="grid gap-6">
                             <div className="grid gap-2">
-                                <Label htmlFor="name">Name</Label>
+                                <Label htmlFor="full_name">Full Name</Label>
                                 <Input
-                                    id="name"
+                                    id="full_name"
                                     type="text"
                                     required
                                     autoFocus
                                     tabIndex={1}
                                     autoComplete="name"
-                                    name="name"
+                                    name="full_name"
                                     placeholder="Full name"
                                 />
                                 <InputError
-                                    message={errors.name}
+                                    message={errors.full_name}
                                     className="mt-2"
                                 />
                             </div>
@@ -59,11 +59,37 @@ export default function Register() {
                             </div>
 
                             <div className="grid gap-2">
+                                <Label htmlFor="contact_number">Contact Number</Label>
+                                <Input
+                                    id="contact_number"
+                                    type="tel"
+                                    required
+                                    tabIndex={3}
+                                    autoComplete="tel"
+                                    name="contact_number"
+                                    placeholder="09XX XXX XXXX"
+                                />
+                                <InputError message={errors.contact_number} />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="emergency_contact">Emergency Contact (optional)</Label>
+                                <Input
+                                    id="emergency_contact"
+                                    type="text"
+                                    tabIndex={4}
+                                    name="emergency_contact"
+                                    placeholder="Emergency Contact Numnber"
+                                />
+                                <InputError message={errors.emergency_contact} />
+                            </div>
+
+                            <div className="grid gap-2">
                                 <Label htmlFor="password">Password</Label>
                                 <PasswordInput
                                     id="password"
                                     required
-                                    tabIndex={3}
+                                    tabIndex={5}
                                     autoComplete="new-password"
                                     name="password"
                                     placeholder="Password"
@@ -78,7 +104,7 @@ export default function Register() {
                                 <PasswordInput
                                     id="password_confirmation"
                                     required
-                                    tabIndex={4}
+                                    tabIndex={6}
                                     autoComplete="new-password"
                                     name="password_confirmation"
                                     placeholder="Confirm password"
@@ -91,7 +117,7 @@ export default function Register() {
                             <Button
                                 type="submit"
                                 className="mt-2 w-full bg-orange-500 hover:bg-orange-600 text-white"
-                                tabIndex={5}
+                                tabIndex={7}
                                 data-test="register-user-button"
                             >
                                 {processing && <Spinner />}
@@ -101,7 +127,7 @@ export default function Register() {
 
                         <div className="text-center text-sm text-muted-foreground">
                             Already have an account?{' '}
-                            <TextLink href={login()} tabIndex={6}>
+                            <TextLink href={login()} tabIndex={8}>
                                 Log in
                             </TextLink>
                         </div>

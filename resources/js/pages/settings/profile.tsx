@@ -53,13 +53,13 @@ export default function Profile({
                         {({ processing, recentlySuccessful, errors }) => (
                             <>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="name">Name</Label>
+                                    <Label htmlFor="full_name">Full Name</Label>
 
                                     <Input
-                                        id="name"
+                                        id="full_name"
                                         className="mt-1 block w-full"
-                                        defaultValue={auth.user.name}
-                                        name="name"
+                                        defaultValue={auth.user.tenant_profile?.full_name ?? ''}
+                                        name="full_name"
                                         required
                                         autoComplete="name"
                                         placeholder="Full name"
@@ -67,7 +67,7 @@ export default function Profile({
 
                                     <InputError
                                         className="mt-2"
-                                        message={errors.name}
+                                        message={errors.full_name}
                                     />
                                 </div>
 
@@ -88,6 +88,43 @@ export default function Profile({
                                     <InputError
                                         className="mt-2"
                                         message={errors.email}
+                                    />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="contact_number">Contact Number</Label>
+
+                                    <Input
+                                        id="contact_number"
+                                        type="tel"
+                                        className="mt-1 block w-full"
+                                        defaultValue={auth.user.tenant_profile?.contact_number ?? ''}
+                                        name="contact_number"
+                                        required
+                                        autoComplete="tel"
+                                        placeholder="09XX XXX XXXX"
+                                    />
+
+                                    <InputError
+                                        className="mt-2"
+                                        message={errors.contact_number}
+                                    />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="emergency_contact">Emergency Contact (optional)</Label>
+
+                                    <Input
+                                        id="emergency_contact"
+                                        className="mt-1 block w-full"
+                                        defaultValue={auth.user.tenant_profile?.emergency_contact ?? ''}
+                                        name="emergency_contact"
+                                        placeholder="Name and phone number"
+                                    />
+
+                                    <InputError
+                                        className="mt-2"
+                                        message={errors.emergency_contact}
                                     />
                                 </div>
 
