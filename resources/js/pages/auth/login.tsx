@@ -54,18 +54,7 @@ export default function Login({
                             </div>
 
                             <div className="grid gap-2">
-                                <div className="flex items-center">
-                                    <Label htmlFor="password">Password</Label>
-                                    {canResetPassword && (
-                                        <TextLink
-                                            href={request()}
-                                            className="ml-auto text-sm"
-                                            tabIndex={5}
-                                        >
-                                            Forgot password?
-                                        </TextLink>
-                                    )}
-                                </div>
+                                <Label htmlFor="password">Password</Label>
                                 <PasswordInput
                                     id="password"
                                     name="password"
@@ -77,18 +66,29 @@ export default function Login({
                                 <InputError message={errors.password} />
                             </div>
 
-                            <div className="flex items-center space-x-3">
-                                <Checkbox
-                                    id="remember"
-                                    name="remember"
-                                    tabIndex={3}
-                                />
-                                <Label htmlFor="remember">Remember me</Label>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                    <Checkbox
+                                        id="remember"
+                                        name="remember"
+                                        tabIndex={3}
+                                    />
+                                    <label htmlFor="remember" className="text-sm font-medium text-gray-900 select-none">Remember me</label>
+                                </div>
+                                {canResetPassword && (
+                                    <TextLink
+                                        href={request()}
+                                        className="text-sm"
+                                        tabIndex={5}
+                                    >
+                                        Forgot password?
+                                    </TextLink>
+                                )}
                             </div>
 
                             <Button
                                 type="submit"
-                                className="mt-4 w-full"
+                                className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white"
                                 tabIndex={4}
                                 disabled={processing}
                                 data-test="login-button"
