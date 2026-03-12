@@ -7,6 +7,7 @@ use App\Models\Room;
 use App\Models\RoomRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -39,34 +40,42 @@ class RoomController extends Controller
     {
         $user = $request->user();
 
-        if ($room->status !== 'Available') {
-            return back()->with('error', 'This room is not available.');
-        }
+        // Pessimistic locking: lock the room row for the duration of this
+        // transaction so two concurrent requests for the same room cannot
+        // both pass the availability check and both get created.
+        return DB::transaction(function () use ($request, $room, $user) {
+            /** @var Room $lockedRoom */
+            $lockedRoom = Room::where('room_id', $room->room_id)->lockForUpdate()->first();
 
-        $alreadyOccupying = LeaseContract::where('tenant_id', $user->user_id)
-            ->whereIn('contract_status', ['Active', 'Pending_MoveOut'])
-            ->exists();
+            if ($lockedRoom->status !== 'Available') {
+                return back()->with('error', 'This room is not available.');
+            }
 
-        if ($alreadyOccupying) {
-            return back()->with('error', 'You already have an assigned room.');
-        }
+            $alreadyOccupying = LeaseContract::where('tenant_id', $user->user_id)
+                ->whereIn('contract_status', ['Active', 'Pending_MoveOut'])
+                ->exists();
 
-        $existing = RoomRequest::where('user_id', $user->user_id)
-            ->where('room_id', $room->room_id)
-            ->where('status', 'Pending')
-            ->exists();
+            if ($alreadyOccupying) {
+                return back()->with('error', 'You already have an assigned room.');
+            }
 
-        if ($existing) {
-            return back()->with('error', 'You already have a pending request for this room.');
-        }
+            $existing = RoomRequest::where('user_id', $user->user_id)
+                ->where('room_id', $lockedRoom->room_id)
+                ->where('status', 'Pending')
+                ->exists();
 
-        RoomRequest::create([
-            'user_id' => $user->user_id,
-            'room_id' => $room->room_id,
-            'message' => $request->input('message'),
-        ]);
+            if ($existing) {
+                return back()->with('error', 'You already have a pending request for this room.');
+            }
 
-        return back()->with('success', 'Room request submitted successfully.');
+            RoomRequest::create([
+                'user_id' => $user->user_id,
+                'room_id' => $lockedRoom->room_id,
+                'message' => $request->input('message'),
+            ]);
+
+            return back()->with('success', 'Room request submitted successfully.');
+        });
     }
 
     public function cancelRequest(Request $request, RoomRequest $roomRequest): RedirectResponse

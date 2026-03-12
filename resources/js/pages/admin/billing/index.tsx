@@ -1,4 +1,6 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
+import { RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import AdminLayout from '@/layouts/admin-layout';
 
 type Payment = {
@@ -47,12 +49,38 @@ const statusClass: Record<string, string> = {
 };
 
 export default function AdminBillingIndex({ bills }: Props) {
+    const { props } = usePage();
+    const flash = props.flash as { success?: string; error?: string } | undefined;
+
+    function handleGenerate() {
+        if (confirm('Generate rent bills for all active tenants for this month?')) {
+            router.post('/admin/billing/generate-monthly');
+        }
+    }
+
     return (
         <AdminLayout breadcrumbs={breadcrumbs}>
             <Head title="Billing" />
 
             <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Billing</h1>
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Billing</h1>
+                    <Button onClick={handleGenerate} className="bg-orange-500 hover:bg-orange-600 text-white">
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Generate Monthly Bills
+                    </Button>
+                </div>
+
+                {flash?.success && (
+                    <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+                        {flash.success}
+                    </div>
+                )}
+                {flash?.error && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                        {flash.error}
+                    </div>
+                )}
 
                 <div className="overflow-hidden rounded-xl border bg-white dark:bg-neutral-900 dark:border-neutral-800 shadow-sm">
                     <table className="w-full text-left text-sm">

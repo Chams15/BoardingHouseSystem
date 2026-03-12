@@ -17,13 +17,15 @@ class Bill extends Model
         'amount_due',
         'due_date',
         'payment_status',
+        'version',
     ];
 
     protected function casts(): array
     {
         return [
             'amount_due' => 'decimal:2',
-            'due_date' => 'date',
+            'due_date'   => 'date',
+            'version'    => 'integer',
         ];
     }
 

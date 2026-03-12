@@ -28,4 +28,5 @@ Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])
         Route::post('rooms/contracts/{contract}/approve-move-out', [RoomManagementController::class, 'approveMoveOut'])->name('rooms.approve-move-out');
 
         Route::get('billing', [AdminBillingController::class, 'index'])->name('billing.index');
+        Route::post('billing/generate-monthly', [AdminBillingController::class, 'generateMonthlyBills'])->name('billing.generate-monthly');
     });

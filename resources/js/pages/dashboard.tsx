@@ -22,6 +22,7 @@ type Bill = {
     amount_due: string;
     due_date: string;
     payment_status: 'Unpaid' | 'Paid' | 'Overdue' | 'Waived';
+    version: number;
 };
 
 type Room = {
@@ -73,7 +74,7 @@ export default function Dashboard({ activeContract, currentBill }: Props) {
         setPaying(true);
         router.post(
             `/billing/${currentBill.bill_id}/pay`,
-            { payment_method: paymentMethod, reference_no: referenceNo || undefined },
+            { payment_method: paymentMethod, reference_no: referenceNo || undefined, version: currentBill.version },
             {
                 onSuccess: () => {
                     setPayOpen(false);

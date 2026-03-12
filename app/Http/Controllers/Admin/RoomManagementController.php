@@ -39,29 +39,19 @@ class RoomManagementController extends Controller
 
     public function approve(RoomRequest $roomRequest): RedirectResponse
     {
-        return DB::transaction(function () use ($roomRequest) {
-            $roomRequest->update(['status' => 'Approved']);
+        // Pessimistic lock: wrap in a transaction and call the stored procedure.
+        // sp_approve_room_request acquires FOR UPDATE locks on both the
+        // room_requests and rooms rows, preventing two concurrent approvals
+        // from creating duplicate contracts.
+        try {
+            DB::transaction(function () use ($roomRequest) {
+                DB::statement('CALL sp_approve_room_request(?)', [$roomRequest->request_id]);
+            });
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
-            $room = $roomRequest->room;
-            $room->update(['status' => 'Occupied']);
-
-            LeaseContract::create([
-                'tenant_id' => $roomRequest->user_id,
-                'room_id' => $roomRequest->room_id,
-                'start_date' => now(),
-                'end_date' => now()->addYear(),
-                'security_deposit' => 0,
-                'contract_status' => 'Active',
-            ]);
-
-            // Reject all other pending requests for this room
-            RoomRequest::where('room_id', $roomRequest->room_id)
-                ->where('request_id', '!=', $roomRequest->request_id)
-                ->where('status', 'Pending')
-                ->update(['status' => 'Rejected']);
-
-            return back()->with('success', 'Request approved. Room is now occupied.');
-        });
+        return back()->with('success', 'Request approved. Room is now occupied.');
     }
 
     public function reject(RoomRequest $roomRequest): RedirectResponse
@@ -86,16 +76,16 @@ class RoomManagementController extends Controller
 
     public function approveMoveOut(LeaseContract $contract): RedirectResponse
     {
-        if ($contract->contract_status !== 'Pending_MoveOut') {
-            return back()->with('error', 'This contract does not have a pending move-out request.');
+        // Delegates to sp_process_move_out which acquires a FOR UPDATE lock
+        // on the lease_contract row before terminating it.
+        try {
+            DB::transaction(function () use ($contract) {
+                DB::statement('CALL sp_process_move_out(?)', [$contract->contract_id]);
+            });
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
         }
 
-        return DB::transaction(function () use ($contract) {
-            $contract->update(['contract_status' => 'Terminated']);
-
-            $contract->room->update(['status' => 'Available']);
-
-            return back()->with('success', 'Move-out approved. Room is now available.');
-        });
+        return back()->with('success', 'Move-out approved. Room is now available.');
     }
 }
