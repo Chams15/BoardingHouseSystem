@@ -40,9 +40,7 @@ class RoomController extends Controller
     {
         $user = $request->user();
 
-        // Pessimistic locking: lock the room row for the duration of this
-        // transaction so two concurrent requests for the same room cannot
-        // both pass the availability check and both get created.
+        //pessimistic lock
         return DB::transaction(function () use ($request, $room, $user) {
             /** @var Room $lockedRoom */
             $lockedRoom = Room::where('room_id', $room->room_id)->lockForUpdate()->first();
