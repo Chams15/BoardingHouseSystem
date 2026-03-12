@@ -49,7 +49,7 @@ export default function TenantsIndex({ tenants, filters }: Props) {
 
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-bold text-gray-900">Tenants</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Tenants</h1>
                     <Link href="/admin/tenants/create">
                         <Button className="bg-orange-500 hover:bg-orange-600 text-white">
                             <Plus className="mr-2 h-4 w-4" />
@@ -72,15 +72,15 @@ export default function TenantsIndex({ tenants, filters }: Props) {
                             placeholder="Search by name, email, or contact..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="pl-9 bg-white"
+                            className="pl-9"
                         />
                     </div>
                     <Button type="submit" variant="outline">Search</Button>
                 </form>
 
-                <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
+                <div className="overflow-hidden rounded-xl border bg-white dark:bg-neutral-900 dark:border-neutral-800 shadow-sm">
                     <table className="w-full text-left text-sm">
-                        <thead className="border-b bg-gray-50 text-gray-600">
+                        <thead className="border-b bg-gray-50 dark:bg-neutral-800 dark:border-neutral-700 text-gray-600 dark:text-gray-400">
                             <tr>
                                 <th className="px-4 py-3 font-medium">Name</th>
                                 <th className="px-4 py-3 font-medium">Email</th>
@@ -89,21 +89,21 @@ export default function TenantsIndex({ tenants, filters }: Props) {
                                 <th className="px-4 py-3 font-medium text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y">
+                        <tbody className="divide-y dark:divide-neutral-800">
                             {tenants.data.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                                         No tenants found.
                                     </td>
                                 </tr>
                             ) : (
                                 tenants.data.map((tenant) => (
-                                    <tr key={tenant.user_id} className="hover:bg-gray-50">
-                                        <td className="px-4 py-3 font-medium text-gray-900">
+                                    <tr key={tenant.user_id} className="hover:bg-gray-50 dark:hover:bg-neutral-800">
+                                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
                                             {tenant.tenant_profile?.full_name ?? '—'}
                                         </td>
-                                        <td className="px-4 py-3 text-gray-600">{tenant.email}</td>
-                                        <td className="px-4 py-3 text-gray-600">
+                                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{tenant.email}</td>
+                                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
                                             {tenant.tenant_profile?.contact_number ?? '—'}
                                         </td>
                                         <td className="px-4 py-3">

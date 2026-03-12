@@ -51,7 +51,7 @@ export default function RoomRequests({ requests }: Props) {
             <Head title="Room Requests" />
 
             <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-gray-900">Room Requests</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Room Requests</h1>
 
                 {flash?.success && (
                     <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
@@ -60,13 +60,13 @@ export default function RoomRequests({ requests }: Props) {
                 )}
 
                 {requests.length === 0 ? (
-                    <div className="rounded-xl border bg-white p-8 text-center text-gray-500 shadow-sm">
+                    <div className="rounded-xl border bg-white dark:bg-neutral-900 dark:border-neutral-800 p-8 text-center text-gray-500 dark:text-gray-400 shadow-sm">
                         No pending room requests.
                     </div>
                 ) : (
-                    <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
+                    <div className="overflow-hidden rounded-xl border bg-white dark:bg-neutral-900 dark:border-neutral-800 shadow-sm">
                         <table className="w-full text-left text-sm">
-                            <thead className="border-b bg-gray-50 text-gray-600">
+                            <thead className="border-b bg-gray-50 dark:bg-neutral-800 dark:border-neutral-700 text-gray-600 dark:text-gray-400">
                                 <tr>
                                     <th className="px-4 py-3 font-medium">Tenant</th>
                                     <th className="px-4 py-3 font-medium">Email</th>
@@ -76,16 +76,16 @@ export default function RoomRequests({ requests }: Props) {
                                     <th className="px-4 py-3 font-medium text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y">
+                            <tbody className="divide-y dark:divide-neutral-800">
                                 {requests.map((req) => (
-                                    <tr key={req.request_id} className="hover:bg-gray-50">
-                                        <td className="px-4 py-3 font-medium text-gray-900">
+                                    <tr key={req.request_id} className="hover:bg-gray-50 dark:hover:bg-neutral-800">
+                                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
                                             {req.user.tenant_profile?.full_name ?? '—'}
                                         </td>
-                                        <td className="px-4 py-3 text-gray-600">{req.user.email}</td>
-                                        <td className="px-4 py-3 text-gray-600">{req.room.room_number}</td>
-                                        <td className="px-4 py-3 text-gray-600">{req.room.category}</td>
-                                        <td className="px-4 py-3 text-gray-600">
+                                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{req.user.email}</td>
+                                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{req.room.room_number}</td>
+                                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{req.room.category}</td>
+                                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
                                             {new Date(req.created_at).toLocaleDateString()}
                                         </td>
                                         <td className="px-4 py-3 text-right">

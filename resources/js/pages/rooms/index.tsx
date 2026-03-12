@@ -17,7 +17,8 @@ type Room = {
 
 type Props = {
     rooms: Room[];
-    userPendingRequests: number[];
+    userPendingRequests: Record<number, number>; // room_id -> request_id
+    hasActiveContract: boolean;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -25,12 +26,16 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Rooms', href: '/rooms' },
 ];
 
-export default function RoomsIndex({ rooms, userPendingRequests }: Props) {
+export default function RoomsIndex({ rooms, userPendingRequests, hasActiveContract }: Props) {
     const { props } = usePage();
     const flash = props.flash as { success?: string; error?: string } | undefined;
 
     function handleRequest(roomId: number) {
         router.post(`/rooms/${roomId}/request`, {}, { preserveState: true });
+    }
+
+    function handleCancel(roomId: number) {
+        router.delete(`/rooms/requests/${roomId}/cancel`, { preserveState: true });
     }
 
     return (
@@ -54,7 +59,7 @@ export default function RoomsIndex({ rooms, userPendingRequests }: Props) {
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {rooms.map((room) => {
                         const isAvailable = room.status === 'Available';
-                        const hasPending = userPendingRequests.includes(room.room_id);
+                        const pendingRequestId = userPendingRequests[room.room_id];
 
                         return (
                             <div
@@ -107,9 +112,22 @@ export default function RoomsIndex({ rooms, userPendingRequests }: Props) {
 
                                 <div className="border-t p-4 dark:border-neutral-800">
                                     {isAvailable ? (
-                                        hasPending ? (
+                                        pendingRequestId ? (
+                                            <div className="flex gap-2">
+                                                <Button disabled className="flex-1" variant="outline">
+                                                    Request Pending
+                                                </Button>
+                                                <Button
+                                                    onClick={() => handleCancel(pendingRequestId)}
+                                                    variant="destructive"
+                                                    className="shrink-0"
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            </div>
+                                        ) : hasActiveContract ? (
                                             <Button disabled className="w-full" variant="outline">
-                                                Request Pending
+                                                Already Assigned a Room
                                             </Button>
                                         ) : (
                                             <Button

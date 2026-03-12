@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminBillingController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\RoomManagementController;
 use App\Http\Controllers\Admin\TenantController;
@@ -24,4 +25,7 @@ Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])
         Route::post('rooms/requests/{roomRequest}/approve', [RoomManagementController::class, 'approve'])->name('rooms.requests.approve');
         Route::post('rooms/requests/{roomRequest}/reject', [RoomManagementController::class, 'reject'])->name('rooms.requests.reject');
         Route::post('rooms/{room}/remove-tenant', [RoomManagementController::class, 'removeTenant'])->name('rooms.remove-tenant');
+        Route::post('rooms/contracts/{contract}/approve-move-out', [RoomManagementController::class, 'approveMoveOut'])->name('rooms.approve-move-out');
+
+        Route::get('billing', [AdminBillingController::class, 'index'])->name('billing.index');
     });

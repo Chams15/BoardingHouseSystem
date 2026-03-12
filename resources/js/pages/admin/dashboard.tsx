@@ -30,17 +30,17 @@ export default function AdminDashboard({ stats }: Props) {
             <Head title="Admin Dashboard" />
 
             <div className="space-y-6">
-                <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {cards.map((card) => (
-                        <div key={card.label} className="flex items-center gap-4 rounded-xl border bg-white p-5 shadow-sm">
+                        <div key={card.label} className="flex items-center gap-4 rounded-xl border bg-white dark:bg-neutral-900 dark:border-neutral-800 p-5 shadow-sm">
                             <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${card.color}`}>
                                 <card.icon className="h-6 w-6 text-white" />
                             </div>
                             <div>
-                                <p className="text-sm text-gray-500">{card.label}</p>
-                                <p className="text-2xl font-bold text-gray-900">{card.value}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{card.label}</p>
+                                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{card.value}</p>
                             </div>
                         </div>
                     ))}

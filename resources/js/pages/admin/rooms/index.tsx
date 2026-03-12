@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { UserMinus } from 'lucide-react';
+import { LogOut, UserMinus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AdminLayout from '@/layouts/admin-layout';
 
@@ -49,13 +49,19 @@ export default function AdminRoomsIndex({ rooms }: Props) {
         }
     }
 
+    function handleApproveMoveOut(contractId: number) {
+        if (confirm('Approve this move-out request? The room will become available.')) {
+            router.post(`/admin/rooms/contracts/${contractId}/approve-move-out`);
+        }
+    }
+
     return (
         <AdminLayout breadcrumbs={breadcrumbs}>
             <Head title="Rooms Management" />
 
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-bold text-gray-900">Rooms</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Rooms</h1>
                     <Link href="/admin/rooms/requests">
                         <Button className="bg-orange-500 hover:bg-orange-600 text-white">
                             View Requests
@@ -74,9 +80,9 @@ export default function AdminRoomsIndex({ rooms }: Props) {
                     </div>
                 )}
 
-                <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
+                <div className="overflow-hidden rounded-xl border bg-white dark:bg-neutral-900 dark:border-neutral-800 shadow-sm">
                     <table className="w-full text-left text-sm">
-                        <thead className="border-b bg-gray-50 text-gray-600">
+                        <thead className="border-b bg-gray-50 dark:bg-neutral-800 dark:border-neutral-700 text-gray-600 dark:text-gray-400">
                             <tr>
                                 <th className="px-4 py-3 font-medium">Room</th>
                                 <th className="px-4 py-3 font-medium">Category</th>
@@ -87,19 +93,20 @@ export default function AdminRoomsIndex({ rooms }: Props) {
                                 <th className="px-4 py-3 font-medium text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y">
+                        <tbody className="divide-y dark:divide-neutral-800">
                             {rooms.map((room) => {
                                 const activeLease = room.lease_contracts.find(
-                                    (lc) => lc.contract_status === 'Active',
+                                    (lc) => lc.contract_status === 'Active' || lc.contract_status === 'Pending_MoveOut',
                                 );
+                                const isPendingMoveOut = activeLease?.contract_status === 'Pending_MoveOut';
 
                                 return (
-                                    <tr key={room.room_id} className="hover:bg-gray-50">
-                                        <td className="px-4 py-3 font-medium text-gray-900">
+                                    <tr key={room.room_id} className="hover:bg-gray-50 dark:hover:bg-neutral-800">
+                                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
                                             {room.room_number}
                                         </td>
-                                        <td className="px-4 py-3 text-gray-600">{room.category}</td>
-                                        <td className="px-4 py-3 text-gray-600">
+                                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{room.category}</td>
+                                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
                                             ₱{Number(room.price_monthly).toLocaleString()}
                                         </td>
                                         <td className="px-4 py-3">
@@ -107,18 +114,20 @@ export default function AdminRoomsIndex({ rooms }: Props) {
                                                 className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                                                     room.status === 'Available'
                                                         ? 'bg-green-100 text-green-700'
-                                                        : 'bg-red-100 text-red-700'
+                                                        : isPendingMoveOut
+                                                          ? 'bg-yellow-100 text-yellow-700'
+                                                          : 'bg-red-100 text-red-700'
                                                 }`}
                                             >
-                                                {room.status}
+                                                {isPendingMoveOut ? 'Move-Out Pending' : room.status}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 text-gray-600">
+                                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
                                             {activeLease
                                                 ? activeLease.tenant.tenant_profile?.full_name ?? activeLease.tenant.email
                                                 : '—'}
                                         </td>
-                                        <td className="px-4 py-3 text-gray-600">
+                                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
                                             {room.room_requests_count > 0 ? (
                                                 <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-100 px-1.5 text-xs font-medium text-orange-700">
                                                     {room.room_requests_count}
@@ -128,7 +137,18 @@ export default function AdminRoomsIndex({ rooms }: Props) {
                                             )}
                                         </td>
                                         <td className="px-4 py-3 text-right">
-                                            {activeLease && (
+                                            {isPendingMoveOut && activeLease && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-green-600 hover:text-green-800"
+                                                    onClick={() => handleApproveMoveOut(activeLease.contract_id)}
+                                                >
+                                                    <LogOut className="mr-1 h-4 w-4" />
+                                                    Approve Move-Out
+                                                </Button>
+                                            )}
+                                            {activeLease && !isPendingMoveOut && (
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"

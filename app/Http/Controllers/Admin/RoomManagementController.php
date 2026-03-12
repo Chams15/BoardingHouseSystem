@@ -16,7 +16,7 @@ class RoomManagementController extends Controller
     public function index(): Response
     {
         $rooms = Room::with(['leaseContracts' => function ($q) {
-            $q->where('contract_status', 'Active')->with('tenant.tenantProfile');
+            $q->whereIn('contract_status', ['Active', 'Pending_MoveOut'])->with('tenant.tenantProfile');
         }])->withCount(['roomRequests' => fn ($q) => $q->where('status', 'Pending')])
           ->get();
 
@@ -81,6 +81,21 @@ class RoomManagementController extends Controller
             $room->update(['status' => 'Available']);
 
             return back()->with('success', 'Tenant removed from room. Room is now available.');
+        });
+    }
+
+    public function approveMoveOut(LeaseContract $contract): RedirectResponse
+    {
+        if ($contract->contract_status !== 'Pending_MoveOut') {
+            return back()->with('error', 'This contract does not have a pending move-out request.');
+        }
+
+        return DB::transaction(function () use ($contract) {
+            $contract->update(['contract_status' => 'Terminated']);
+
+            $contract->room->update(['status' => 'Available']);
+
+            return back()->with('success', 'Move-out approved. Room is now available.');
         });
     }
 }
