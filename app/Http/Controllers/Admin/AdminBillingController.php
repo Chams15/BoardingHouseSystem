@@ -28,9 +28,7 @@ class AdminBillingController extends Controller
 
     public function generateMonthlyBills(): RedirectResponse
     {
-        // Calls sp_generate_monthly_bills — the procedure uses a cursor to
-        // loop all Active leases and inserts Rent bills for the current
-        // month only if they do not already exist (idempotent).
+        
         DB::statement('CALL sp_generate_monthly_bills()');
 
         return back()->with('success', 'Monthly rent bills generated for all active tenants.');
