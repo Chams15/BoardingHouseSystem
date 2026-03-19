@@ -7,6 +7,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         // ---------------------------------------------------------------
         // sp_approve_room_request(p_request_id)
         //
@@ -178,6 +182,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::unprepared('DROP PROCEDURE IF EXISTS sp_approve_room_request');
         DB::unprepared('DROP PROCEDURE IF EXISTS sp_generate_monthly_bills');
         DB::unprepared('DROP PROCEDURE IF EXISTS sp_process_move_out');

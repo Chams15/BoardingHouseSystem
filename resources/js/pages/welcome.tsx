@@ -21,7 +21,7 @@ export default function Welcome({
                                 <AppLogoIcon className="size-6 fill-current text-white" />
                             </div>
                             <span className="text-xl font-bold text-gray-900">
-                                Boarding House
+                                G&D Boarding House
                             </span>
                         </Link>
                         <nav className="flex items-center gap-3">
@@ -178,10 +178,10 @@ export default function Welcome({
                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500">
                                 <AppLogoIcon className="size-4 fill-current text-white" />
                             </div>
-                            <span className="font-semibold text-gray-900">Boarding House</span>
+                            <span className="font-semibold text-gray-900"> G&D Boarding House</span>
                         </div>
                         <p className="text-sm text-gray-500">
-                            &copy; {new Date().getFullYear()} Boarding House. All rights reserved.
+                            &copy; {new Date().getFullYear()} G&D Boarding House. All rights reserved.
                         </p>
                     </div>
                 </footer>

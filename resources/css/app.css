@@ -137,6 +137,12 @@
         @apply border-border;
     }
 
+    input::selection,
+    textarea::selection {
+        background-color: #2563eb;
+        color: #ffffff;
+    }
+
     body {
         @apply bg-background text-foreground;
     }
