@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { LogOut, UserMinus } from 'lucide-react';
+import { LogOut, UserMinus, Plus, Edit, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AdminLayout from '@/layouts/admin-layout';
 
@@ -62,16 +62,24 @@ export default function AdminRoomsIndex({ rooms }: Props) {
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Rooms</h1>
-                    <Link href="/admin/rooms/requests">
-                        <Button className="bg-orange-500 hover:bg-orange-600 text-white">
-                            View Requests
-                            {rooms.reduce((sum, r) => sum + r.room_requests_count, 0) > 0 && (
-                                <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-orange-600">
-                                    {rooms.reduce((sum, r) => sum + r.room_requests_count, 0)}
-                                </span>
-                            )}
-                        </Button>
-                    </Link>
+                    <div className="flex gap-3">
+                        <Link href="/admin/rooms/create">
+                            <Button className="bg-green-600 hover:bg-green-700 text-white gap-2">
+                                <Plus className="h-4 w-4" />
+                                Create Room
+                            </Button>
+                        </Link>
+                        <Link href="/admin/rooms/requests">
+                            <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+                                View Requests
+                                {rooms.reduce((sum, r) => sum + r.room_requests_count, 0) > 0 && (
+                                    <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-orange-600">
+                                        {rooms.reduce((sum, r) => sum + r.room_requests_count, 0)}
+                                    </span>
+                                )}
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
 
                 {flash?.success && (
@@ -137,28 +145,40 @@ export default function AdminRoomsIndex({ rooms }: Props) {
                                             )}
                                         </td>
                                         <td className="px-4 py-3 text-right">
-                                            {isPendingMoveOut && activeLease && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-green-600 hover:text-green-800"
-                                                    onClick={() => handleApproveMoveOut(activeLease.contract_id)}
-                                                >
-                                                    <LogOut className="mr-1 h-4 w-4" />
-                                                    Approve Move-Out
-                                                </Button>
-                                            )}
-                                            {activeLease && !isPendingMoveOut && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-red-500 hover:text-red-700"
-                                                    onClick={() => handleRemoveTenant(room.room_id)}
-                                                >
-                                                    <UserMinus className="mr-1 h-4 w-4" />
-                                                    Remove
-                                                </Button>
-                                            )}
+                                            <div className="flex gap-1 justify-end flex-wrap">
+                                                <Link href={`/admin/rooms/${room.room_id}/edit`}>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                                                    >
+                                                        <Edit className="mr-1 h-4 w-4" />
+                                                        Edit
+                                                    </Button>
+                                                </Link>
+                                                {isPendingMoveOut && activeLease && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-green-600 hover:text-green-800 dark:text-green-400"
+                                                        onClick={() => handleApproveMoveOut(activeLease.contract_id)}
+                                                    >
+                                                        <LogOut className="mr-1 h-4 w-4" />
+                                                        Approve Move-Out
+                                                    </Button>
+                                                )}
+                                                {activeLease && !isPendingMoveOut && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-red-500 hover:text-red-700 dark:text-red-400"
+                                                        onClick={() => handleRemoveTenant(room.room_id)}
+                                                    >
+                                                        <UserMinus className="mr-1 h-4 w-4" />
+                                                        Remove
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 );

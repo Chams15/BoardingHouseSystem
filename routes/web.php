@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\BillingController;
+use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\RoomController;
+use App\Http\Controllers\TenantVisitorController;
+use App\Http\Middleware\EnsureTenantHasRoom;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -37,9 +40,44 @@ Route::middleware(['auth', 'verified'])->group(function () {
             );
         }
 
+        // Get recent visitors (active/recent ones)
+        $recentVisitors = \App\Models\VisitorLog::where('tenant_visited', $user->user_id)
+            ->orderByDesc('time_in')
+            ->take(5)
+            ->get()
+            ->map(function (\App\Models\VisitorLog $log) {
+                return [
+                    'log_id' => $log->log_id,
+                    'visitor_name' => $log->visitor_name,
+                    'visitor_photo_url' => $log->visitor_photo_path ? \Illuminate\Support\Facades\Storage::url($log->visitor_photo_path) : null,
+                    'purpose' => $log->purpose,
+                    'time_in' => $log->time_in,
+                    'time_out' => $log->time_out,
+                ];
+            });
+
+        // Get recent maintenance tickets
+        $recentTickets = \App\Models\MaintenanceTicket::where('reported_by', $user->user_id)
+            ->orderByDesc('created_at')
+            ->take(5)
+            ->get()
+            ->map(function (\App\Models\MaintenanceTicket $ticket) {
+                return [
+                    'ticket_id' => $ticket->ticket_id,
+                    'issue_desc' => $ticket->issue_desc,
+                    'issue_photo_url' => $ticket->issue_photo_path ? \Illuminate\Support\Facades\Storage::url($ticket->issue_photo_path) : null,
+                    'priority' => $ticket->priority,
+                    'status' => $ticket->status,
+                    'created_at' => $ticket->created_at,
+                    'resolved_at' => $ticket->resolved_at,
+                ];
+            });
+
         return inertia('dashboard', [
             'activeContract' => $activeContract,
             'currentBill'    => $currentBill,
+            'recentVisitors' => $recentVisitors,
+            'recentTickets'  => $recentTickets,
         ]);
     })->name('dashboard');
 
@@ -48,6 +86,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('rooms/requests/{roomRequest}/cancel', [RoomController::class, 'cancelRequest'])->name('rooms.request.cancel');
     Route::post('rooms/move-out', [RoomController::class, 'requestMoveOut'])->name('rooms.move-out');
     Route::post('billing/{bill}/pay', [BillingController::class, 'pay'])->name('billing.pay');
+
+    Route::middleware([EnsureTenantHasRoom::class])->group(function () {
+        Route::get('maintenance', [MaintenanceController::class, 'index'])->name('maintenance.index');
+        Route::post('maintenance', [MaintenanceController::class, 'store'])->name('maintenance.store');
+
+        Route::get('visitors', [TenantVisitorController::class, 'index'])->name('visitors.index');
+        Route::post('visitors', [TenantVisitorController::class, 'store'])->name('visitors.store');
+        Route::post('visitors/{visitorLog}/checkout', [TenantVisitorController::class, 'checkout'])->name('visitors.checkout');
+    });
 });
 
 require __DIR__.'/admin.php';

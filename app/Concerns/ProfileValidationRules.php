@@ -58,7 +58,7 @@ trait ProfileValidationRules
             'max:100',
             $userId === null
                 ? Rule::unique(User::class)
-                : Rule::unique(User::class)->ignore($userId),
+                : Rule::unique(User::class)->ignore($userId, 'user_id'),
             function (string $attribute, mixed $value, Closure $fail) {
                 if (Blacklist::where('email', $value)->exists()) {
                     $fail('This email address has been banned from the system.');

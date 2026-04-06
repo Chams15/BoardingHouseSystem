@@ -73,7 +73,7 @@ export default function Login({
                                         name="remember"
                                         tabIndex={3}
                                     />
-                                    <label htmlFor="remember" className="text-sm font-medium text-gray-900 select-none">Remember me</label>
+                                    <label htmlFor="remember" className="select-none text-sm font-medium text-gray-900 dark:text-gray-200">Remember me</label>
                                 </div>
                                 {canResetPassword && (
                                     <TextLink
@@ -111,7 +111,7 @@ export default function Login({
             </Form>
 
             {status && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
+                <div className="mb-4 text-center text-sm font-medium text-green-600 dark:text-green-400">
                     {status}
                 </div>
             )}

@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { DoorOpen, LayoutGrid } from 'lucide-react';
+import { DoorOpen, LayoutGrid, UserRound, Wrench } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -15,20 +15,30 @@ import {
 import { dashboard } from '@/routes';
 import type { NavItem } from '@/types';
 
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-    {
-        title: 'Rooms',
-        href: '/rooms',
-        icon: DoorOpen,
-    },
-];
-
 export function AppSidebar() {
+    const mainNavItems: NavItem[] = [
+        {
+            title: 'Dashboard',
+            href: dashboard(),
+            icon: LayoutGrid,
+        },
+        {
+            title: 'Rooms',
+            href: '/rooms',
+            icon: DoorOpen,
+        },
+        {
+            title: 'Maintenance',
+            href: '/maintenance',
+            icon: Wrench,
+        },
+        {
+            title: 'Visitors',
+            href: '/visitors',
+            icon: UserRound,
+        },
+    ];
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>

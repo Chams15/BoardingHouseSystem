@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\LeaseContract;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -35,14 +36,30 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+
+        $hasTenantRoom = false;
+
+        if ($user && strtolower((string) $user->role) === 'tenant') {
+            $hasTenantRoom = LeaseContract::where('tenant_id', $user->user_id)
+                ->whereNotNull('room_id')
+                ->where(function ($query) {
+                    $query->whereNull('contract_status')
+                        ->orWhere('contract_status', '!=', 'Terminated');
+                })
+                ->exists();
+        }
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
-                'user' => $request->user()?->load('tenantProfile'),
+                'user' => $user?->load('tenantProfile'),
+                'hasTenantRoom' => $hasTenantRoom,
             ],
             'flash' => [
                 'success' => $request->session()->get('success'),
+                'error' => $request->session()->get('error'),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

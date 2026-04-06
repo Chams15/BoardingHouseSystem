@@ -29,12 +29,22 @@ const setCookie = (name: string, value: string, days = 365): void => {
     document.cookie = `${name}=${value};path=/;max-age=${maxAge};SameSite=Lax`;
 };
 
+const isAppearance = (value: string | null): value is Appearance => {
+    return value === 'light' || value === 'dark' || value === 'system';
+};
+
 const getStoredAppearance = (): Appearance => {
     if (typeof window === 'undefined') {
         return 'system';
     }
 
-    return (localStorage.getItem('appearance') as Appearance) || 'system';
+    const raw = localStorage.getItem('appearance');
+
+    if (!isAppearance(raw)) {
+        return 'light';
+    }
+
+    return raw;
 };
 
 const isDarkMode = (appearance: Appearance): boolean => {
@@ -75,9 +85,21 @@ export function initializeTheme(): void {
         return;
     }
 
-    if (!localStorage.getItem('appearance')) {
-        localStorage.setItem('appearance', 'system');
-        setCookie('appearance', 'system');
+    const stored = localStorage.getItem('appearance');
+
+    // Default to light for first-time users so pages are not unexpectedly dark.
+    if (!isAppearance(stored)) {
+        localStorage.setItem('appearance', 'light');
+        setCookie('appearance', 'light');
+    }
+
+    // One-time migration: older builds defaulted to "system". If user never
+    // explicitly chose a mode, system could resolve to dark and make the whole
+    // app look black unexpectedly. Migrate that implicit default to light.
+    if (stored === 'system' && !localStorage.getItem('appearance_migrated_v2')) {
+        localStorage.setItem('appearance', 'light');
+        localStorage.setItem('appearance_migrated_v2', '1');
+        setCookie('appearance', 'light');
     }
 
     currentAppearance = getStoredAppearance();

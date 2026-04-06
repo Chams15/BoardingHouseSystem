@@ -33,11 +33,11 @@ export default function ResetPassword({ token, email }: Props) {
                             <Input
                                 id="email"
                                 type="email"
-                                name="email"
                                 autoComplete="email"
                                 value={email}
                                 className="mt-1 block w-full"
                                 readOnly
+                                disabled
                             />
                             <InputError
                                 message={errors.email}

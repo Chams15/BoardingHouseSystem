@@ -2,7 +2,10 @@
 
 use App\Http\Controllers\Admin\AdminBillingController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\LeaseController;
+use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\RoomManagementController;
+use App\Http\Controllers\Admin\SecurityController;
 use App\Http\Controllers\Admin\TenantController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\Route;
@@ -21,12 +24,36 @@ Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])
         Route::delete('tenants/{tenant}', [TenantController::class, 'destroy'])->name('tenants.destroy');
 
         Route::get('rooms', [RoomManagementController::class, 'index'])->name('rooms.index');
+        Route::get('rooms/create', [RoomManagementController::class, 'createRoom'])->name('rooms.create');
+        Route::post('rooms', [RoomManagementController::class, 'storeRoom'])->name('rooms.store');
+        Route::get('rooms/{room}/edit', [RoomManagementController::class, 'editRoom'])->name('rooms.edit');
+        Route::put('rooms/{room}', [RoomManagementController::class, 'updateRoom'])->name('rooms.update');
+        Route::delete('rooms/{room}', [RoomManagementController::class, 'deleteRoom'])->name('rooms.destroy');
         Route::get('rooms/requests', [RoomManagementController::class, 'requests'])->name('rooms.requests');
         Route::post('rooms/requests/{roomRequest}/approve', [RoomManagementController::class, 'approve'])->name('rooms.requests.approve');
         Route::post('rooms/requests/{roomRequest}/reject', [RoomManagementController::class, 'reject'])->name('rooms.requests.reject');
         Route::post('rooms/{room}/remove-tenant', [RoomManagementController::class, 'removeTenant'])->name('rooms.remove-tenant');
         Route::post('rooms/contracts/{contract}/approve-move-out', [RoomManagementController::class, 'approveMoveOut'])->name('rooms.approve-move-out');
 
+        // Lease management routes
+        Route::get('leases/create/{room}', [LeaseController::class, 'create'])->name('leases.create');
+        Route::post('leases', [LeaseController::class, 'store'])->name('leases.store');
+        Route::get('leases/{lease}/edit', [LeaseController::class, 'edit'])->name('leases.edit');
+        Route::put('leases/{lease}', [LeaseController::class, 'update'])->name('leases.update');
+        Route::delete('leases/{lease}', [LeaseController::class, 'destroy'])->name('leases.destroy');
+        Route::delete('leases/{lease}/hard', [LeaseController::class, 'hardDelete'])->name('leases.hard-delete');
+
         Route::get('billing', [AdminBillingController::class, 'index'])->name('billing.index');
         Route::post('billing/generate-monthly', [AdminBillingController::class, 'generateMonthlyBills'])->name('billing.generate-monthly');
+
+        Route::get('maintenance', [MaintenanceController::class, 'index'])->name('maintenance.index');
+        Route::put('maintenance/{ticket}', [MaintenanceController::class, 'update'])->name('maintenance.update');
+
+        Route::get('security', [SecurityController::class, 'index'])->name('security.index');
+        Route::post('security/visitors', [SecurityController::class, 'storeVisitor'])->name('security.visitors.store');
+        Route::post('security/visitors/{visitorLog}/checkout', [SecurityController::class, 'checkOutVisitor'])->name('security.visitors.checkout');
+        Route::post('security/incidents', [SecurityController::class, 'storeIncident'])->name('security.incidents.store');
+        Route::put('security/incidents/{incident}', [SecurityController::class, 'updateIncident'])->name('security.incidents.update');
+        Route::post('security/blacklist', [SecurityController::class, 'addToBlacklist'])->name('security.blacklist.store');
+        Route::delete('security/blacklist/{blacklist}', [SecurityController::class, 'removeFromBlacklist'])->name('security.blacklist.destroy');
     });

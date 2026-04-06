@@ -1,5 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, DoorOpen, Users, Receipt } from 'lucide-react';
+import { LayoutGrid, DoorOpen, Users, Receipt, Shield, Wrench } from 'lucide-react';
 import AppLogoIcon from '@/components/app-logo-icon';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,8 @@ const navItems = [
     { title: 'Dashboard', href: '/admin/dashboard', icon: LayoutGrid },
     { title: 'Tenants', href: '/admin/tenants', icon: Users },
     { title: 'Rooms', href: '/admin/rooms', icon: DoorOpen },
+    { title: 'Maintenance', href: '/admin/maintenance', icon: Wrench },
+    { title: 'Security', href: '/admin/security', icon: Shield },
     { title: 'Billing', href: '/admin/billing', icon: Receipt },
 ];
 

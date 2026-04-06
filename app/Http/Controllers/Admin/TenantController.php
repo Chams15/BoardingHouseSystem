@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\LeaseContract;
+use App\Models\Room;
 use App\Models\TenantProfile;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -112,8 +114,24 @@ class TenantController extends Controller
 
     public function destroy(User $tenant): RedirectResponse
     {
-        $tenant->delete();
+        return DB::transaction(function () use ($tenant) {
+            // Get all active leases for this tenant
+            $activeLeases = LeaseContract::where('tenant_id', $tenant->user_id)
+                ->whereIn('contract_status', ['Active', 'Pending_MoveOut'])
+                ->get();
 
-        return redirect()->route('admin.tenants.index')->with('success', 'Tenant deleted successfully.');
+            // Terminate all active leases and mark rooms as available
+            foreach ($activeLeases as $lease) {
+                $lease->update(['contract_status' => 'Terminated']);
+                Room::where('room_id', $lease->room_id)
+                    ->update(['status' => 'Available']);
+            }
+
+            // Delete the tenant (this will cascade delete terminated leases, bills, and tenant profile)
+            $tenant->delete();
+
+            return redirect()->route('admin.tenants.index')
+                ->with('success', sprintf('Tenant deleted successfully. %d active lease(s) were terminated and room(s) marked as available.', count($activeLeases)));
+        });
     }
 }

@@ -12,6 +12,7 @@ class VisitorLog extends Model
     protected $fillable = [
         'tenant_visited',
         'visitor_name',
+        'visitor_photo_path',
         'purpose',
         'time_in',
         'time_out',

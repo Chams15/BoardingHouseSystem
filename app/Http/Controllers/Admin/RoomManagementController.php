@@ -88,4 +88,86 @@ class RoomManagementController extends Controller
 
         return back()->with('success', 'Move-out approved. Room is now available.');
     }
+
+    /**
+     * Show the create room form
+     */
+    public function createRoom(): Response
+    {
+        return Inertia::render('admin/rooms/create');
+    }
+
+    /**
+     * Store a new room
+     */
+    public function storeRoom(\Illuminate\Http\Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'room_number' => 'required|string|unique:rooms,room_number',
+            'category' => 'required|string',
+            'price_monthly' => 'required|numeric|min:0',
+            'capacity' => 'required|integer|min:1',
+            'status' => 'required|in:Available,Occupied,Maintenance',
+            'amenities' => 'nullable|string',
+        ]);
+
+        Room::create($validated);
+
+        return redirect()->route('admin.rooms.index')
+            ->with('success', 'Room created successfully.');
+    }
+
+    /**
+     * Show the edit room form
+     */
+    public function editRoom(Room $room): Response
+    {
+        return Inertia::render('admin/rooms/edit', [
+            'room' => $room->load([
+                'leaseContracts' => function ($q) {
+                    $q->with(['tenant.tenantProfile'])->orderBy('created_at', 'desc');
+                }
+            ]),
+        ]);
+    }
+
+    /**
+     * Update a room
+     */
+    public function updateRoom(\Illuminate\Http\Request $request, Room $room): RedirectResponse
+    {
+        $validated = $request->validate([
+            'room_number' => 'required|string|unique:rooms,room_number,' . $room->room_id . ',room_id',
+            'category' => 'required|string',
+            'price_monthly' => 'required|numeric|min:0',
+            'capacity' => 'required|integer|min:1',
+            'status' => 'required|in:Available,Occupied,Maintenance',
+            'amenities' => 'nullable|string',
+        ]);
+
+        $room->update($validated);
+
+        return redirect()->route('admin.rooms.index')
+            ->with('success', 'Room updated successfully.');
+    }
+
+    /**
+     * Delete a room
+     */
+    public function deleteRoom(Room $room): RedirectResponse
+    {
+        // Check if room has any active leases
+        $activeLeases = LeaseContract::where('room_id', $room->room_id)
+            ->whereIn('contract_status', ['Active', 'Pending_MoveOut'])
+            ->count();
+
+        if ($activeLeases > 0) {
+            return back()->with('error', 'Cannot delete a room with active leases. Please terminate all leases first.');
+        }
+
+        $room->delete();
+
+        return redirect()->route('admin.rooms.index')
+            ->with('success', 'Room deleted successfully.');
+    }
 }
