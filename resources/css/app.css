@@ -95,6 +95,8 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.87 0 0);
+    --selection-bg: #f97316;
+    --selection-fg: #ffffff;
 }
 
 .dark {
@@ -130,6 +132,8 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(0.269 0 0);
     --sidebar-ring: oklch(0.439 0 0);
+    --selection-bg: #ffffff;
+    --selection-fg: #111827;
 }
 
 @layer base {
@@ -137,10 +141,15 @@
         @apply border-border;
     }
 
+    ::selection {
+        background-color: var(--selection-bg);
+        color: var(--selection-fg);
+    }
+
     input::selection,
     textarea::selection {
-        background-color: #2563eb;
-        color: #ffffff;
+        background-color: var(--selection-bg);
+        color: var(--selection-fg);
     }
 
     body {
