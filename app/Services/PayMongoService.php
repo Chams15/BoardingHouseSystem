@@ -31,22 +31,37 @@ class PayMongoService
             return false;
         }
 
-        $parts = [];
+        $timestamp = null;
+        $candidateSignatures = [];
+
         foreach (explode(',', $signatureHeader) as $chunk) {
             [$key, $value] = array_pad(explode('=', trim($chunk), 2), 2, null);
             if ($key !== null && $value !== null) {
-                $parts[trim($key)] = trim($value);
+                $normalizedKey = strtolower(trim($key));
+                $normalizedValue = trim($value, " \t\n\r\0\x0B\"'");
+
+                if ($normalizedKey === 't') {
+                    $timestamp = $normalizedValue;
+                    continue;
+                }
+
+                if (in_array($normalizedKey, ['te', 'v1', 'sig'], true) && $normalizedValue !== '') {
+                    $candidateSignatures[] = $normalizedValue;
+                }
             }
         }
 
-        $timestamp = $parts['t'] ?? null;
-        $candidateSignatures = array_filter([
-            $parts['te'] ?? null,
-            $parts['v1'] ?? null,
-            $parts['sig'] ?? null,
-        ]);
-
         if ($timestamp !== null && ! empty($candidateSignatures)) {
+            $tolerance = (int) config('services.paymongo.webhook_tolerance_seconds', 600);
+
+            if ($tolerance > 0 && ctype_digit((string) $timestamp)) {
+                $age = abs(time() - (int) $timestamp);
+
+                if ($age > $tolerance) {
+                    return false;
+                }
+            }
+
             $expected = hash_hmac('sha256', $timestamp.'.'.$payload, $secret);
 
             foreach ($candidateSignatures as $candidate) {

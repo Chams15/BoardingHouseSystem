@@ -77,6 +77,12 @@ class BillingController extends Controller
                         'name' => $tenantName,
                         'email' => $user->email,
                     ],
+                    'metadata' => [
+                        'bill_id' => (string) $locked->bill_id,
+                        'payment_id' => (string) $payment->payment_id,
+                        'reference_no' => (string) $payment->reference_no,
+                        'tenant_id' => (string) $user->user_id,
+                    ],
                     'line_items' => [[
                         'currency' => 'PHP',
                         'amount' => $amountInCentavos,
@@ -161,11 +167,36 @@ class BillingController extends Controller
         $eventType = (string) (Arr::get($event, 'data.attributes.type') ?: Arr::get($event, 'type', 'unknown'));
         $resource = Arr::get($event, 'data.attributes.data', []);
 
-        $checkoutSessionId = Arr::get($resource, 'id')
-            ?: Arr::get($resource, 'attributes.checkout_session_id');
+        $resourceType = (string) Arr::get($resource, 'type', '');
+        $resourceId = Arr::get($resource, 'id');
+        $checkoutSessionId = null;
+
+        if (Str::contains(Str::lower($resourceType), 'checkout_session') && ! blank($resourceId)) {
+            $checkoutSessionId = $resourceId;
+        } elseif (blank($resourceType) && is_string($resourceId) && Str::startsWith($resourceId, 'cs_')) {
+            $checkoutSessionId = $resourceId;
+        }
+
+        $checkoutSessionId = $checkoutSessionId
+            ?: Arr::get($resource, 'attributes.checkout_session_id')
+            ?: Arr::get($resource, 'attributes.checkout_session.id');
         $paymentIntentId = Arr::get($resource, 'attributes.payment_intent.id')
             ?: Arr::get($resource, 'attributes.payment_intent_id')
-            ?: Arr::get($resource, 'attributes.id');
+            ?: Arr::get($resource, 'attributes.id')
+            ?: Arr::get($resource, 'id');
+
+        if (blank($paymentIntentId) && is_string($resourceId) && Str::startsWith($resourceId, 'pi_')) {
+            $paymentIntentId = $resourceId;
+        }
+        $referenceNo = Arr::get($resource, 'attributes.reference_number')
+            ?: Arr::get($resource, 'attributes.metadata.reference_no')
+            ?: Arr::get($resource, 'attributes.metadata.reference_number')
+            ?: Arr::get($resource, 'attributes.payment_intent.attributes.metadata.reference_no')
+            ?: Arr::get($resource, 'attributes.payment_intent.attributes.metadata.reference_number');
+        $metadataPaymentId = Arr::get($resource, 'attributes.metadata.payment_id')
+            ?: Arr::get($resource, 'attributes.payment_intent.attributes.metadata.payment_id');
+        $metadataBillId = Arr::get($resource, 'attributes.metadata.bill_id')
+            ?: Arr::get($resource, 'attributes.payment_intent.attributes.metadata.bill_id');
 
         $normalizedStatus = $this->normalizeProviderStatus($eventType, Arr::get($resource, 'attributes.status'));
 
@@ -175,27 +206,63 @@ class BillingController extends Controller
             'normalizedStatus' => $normalizedStatus,
             'checkoutSessionId' => $checkoutSessionId,
             'paymentIntentId' => $paymentIntentId,
+            'referenceNo' => $referenceNo,
+            'metadataPaymentId' => $metadataPaymentId,
+            'metadataBillId' => $metadataBillId,
         ]);
 
-        DB::transaction(function () use ($checkoutSessionId, $paymentIntentId, $eventId, $normalizedStatus, $event) {
+        DB::transaction(function () use ($checkoutSessionId, $paymentIntentId, $referenceNo, $metadataPaymentId, $metadataBillId, $eventId, $normalizedStatus, $event) {
             $query = Payment::query()->where('provider', 'paymongo');
 
-            if (! blank($checkoutSessionId)) {
-                $query->where('provider_checkout_session_id', $checkoutSessionId);
-            } elseif (! blank($paymentIntentId)) {
-                $query->where('provider_payment_intent_id', $paymentIntentId);
-            } else {
+            if (blank($checkoutSessionId) && blank($paymentIntentId) && blank($referenceNo)) {
                 \Log::warning('No checkout or payment intent ID found in webhook');
                 return;
             }
+
+            $query->where(function ($match) use ($checkoutSessionId, $paymentIntentId, $referenceNo) {
+                if (! blank($checkoutSessionId)) {
+                    $match->orWhere('provider_checkout_session_id', $checkoutSessionId);
+                }
+
+                if (! blank($paymentIntentId)) {
+                    $match->orWhere('provider_payment_intent_id', $paymentIntentId);
+                }
+
+                if (! blank($referenceNo)) {
+                    $match->orWhere('reference_no', $referenceNo);
+                }
+            });
 
             /** @var Payment|null $payment */
             $payment = $query->lockForUpdate()->first();
 
             if (! $payment) {
+                if (! blank($metadataPaymentId)) {
+                    $payment = Payment::query()
+                        ->where('provider', 'paymongo')
+                        ->where('payment_id', (int) $metadataPaymentId)
+                        ->lockForUpdate()
+                        ->first();
+                }
+            }
+
+            if (! $payment && ! blank($metadataBillId)) {
+                $payment = Payment::query()
+                    ->where('provider', 'paymongo')
+                    ->where('bill_id', (int) $metadataBillId)
+                    ->whereIn('provider_status', ['pending', 'processing'])
+                    ->latest('created_at')
+                    ->lockForUpdate()
+                    ->first();
+            }
+
+            if (! $payment) {
                 \Log::warning('Payment not found for webhook', [
                     'checkoutSessionId' => $checkoutSessionId,
                     'paymentIntentId' => $paymentIntentId,
+                    'referenceNo' => $referenceNo,
+                    'metadataPaymentId' => $metadataPaymentId,
+                    'metadataBillId' => $metadataBillId,
                 ]);
                 return;
             }
@@ -308,9 +375,16 @@ class BillingController extends Controller
         if ($status === 'paid' || 
             $status === 'succeeded' || 
             $status === 'completed' ||
+            $status === 'approved' ||
+            $status === 'authorized' ||
+            $status === 'authorised' ||
+            $status === 'authorizedd' ||
             Str::contains($event, 'paid') || 
             Str::contains($event, 'succeeded') ||
             Str::contains($event, 'completed') ||
+            Str::contains($event, 'approved') ||
+            Str::contains($event, 'authorized') ||
+            Str::contains($event, 'authorised') ||
             Str::contains($event, 'success')
         ) {
             return 'paid';

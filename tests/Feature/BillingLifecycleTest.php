@@ -98,6 +98,7 @@ class BillingLifecycleTest extends TestCase
     public function test_paid_webhook_marks_payment_and_bill_as_paid(): void
     {
         config()->set('services.paymongo.webhook_secret', 'whsec_test_123');
+        config()->set('services.paymongo.webhook_tolerance_seconds', 600);
 
         [, $bill] = $this->createTenantAndBill(now()->addDays(5)->toDateString(), 'Pending');
 
@@ -131,10 +132,168 @@ class BillingLifecycleTest extends TestCase
         ];
 
         $jsonPayload = json_encode($payload, JSON_THROW_ON_ERROR);
-        $signature = hash_hmac('sha256', $jsonPayload, 'whsec_test_123');
+        $timestamp = (string) time();
+        $signature = hash_hmac('sha256', $timestamp.'.'.$jsonPayload, 'whsec_test_123');
+        $header = 't='.$timestamp.',te='.$signature;',te=deadbeef';
 
         $this->postJson(route('billing.paymongo.webhook'), $payload, [
-            'Paymongo-Signature' => $signature,
+            'Paymongo-Signature' => $header,
+        ])->assertOk();
+
+        $payment->refresh();
+        $bill->refresh();
+
+        $this->assertSame('paid', $payment->provider_status);
+        $this->assertNotNull($payment->paid_at);
+        $this->assertSame('Paid', $bill->payment_status);
+    }
+
+    public function test_paid_webhook_can_match_payment_by_reference_number_fallback(): void
+    {
+        config()->set('services.paymongo.webhook_secret', 'whsec_test_123');
+        config()->set('services.paymongo.webhook_tolerance_seconds', 600);
+
+        [, $bill] = $this->createTenantAndBill(now()->addDays(5)->toDateString(), 'Pending');
+
+        $payment = Payment::create([
+            'bill_id' => $bill->bill_id,
+            'amount_paid' => $bill->amount_due,
+            'payment_method' => 'Online',
+            'provider' => 'paymongo',
+            'provider_status' => 'pending',
+            'reference_no' => 'REF-MATCH-001',
+            'payment_date' => now(),
+        ]);
+
+        $payload = [
+            'data' => [
+                'id' => 'evt_ref_123',
+                'attributes' => [
+                    'type' => 'payment.paid',
+                    'data' => [
+                        'id' => 'pay_live_123',
+                        'type' => 'payment',
+                        'attributes' => [
+                            'status' => 'paid',
+                            'reference_number' => 'REF-MATCH-001',
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $jsonPayload = json_encode($payload, JSON_THROW_ON_ERROR);
+        $timestamp = (string) time();
+        $signature = hash_hmac('sha256', $timestamp.'.'.$jsonPayload, 'whsec_test_123');
+
+        $this->postJson(route('billing.paymongo.webhook'), $payload, [
+            'Paymongo-Signature' => 't='.$timestamp.',te='.$signature,
+        ])->assertOk();
+
+        $payment->refresh();
+        $bill->refresh();
+
+        $this->assertSame('paid', $payment->provider_status);
+        $this->assertNotNull($payment->paid_at);
+        $this->assertSame('Paid', $bill->payment_status);
+    }
+
+    public function test_approved_webhook_can_match_by_metadata_and_mark_paid(): void
+    {
+        config()->set('services.paymongo.webhook_secret', 'whsec_test_123');
+        config()->set('services.paymongo.webhook_tolerance_seconds', 600);
+
+        [, $bill] = $this->createTenantAndBill(now()->addDays(5)->toDateString(), 'Pending');
+
+        $payment = Payment::create([
+            'bill_id' => $bill->bill_id,
+            'amount_paid' => $bill->amount_due,
+            'payment_method' => 'Online',
+            'provider' => 'paymongo',
+            'provider_status' => 'pending',
+            'payment_date' => now(),
+            'reference_no' => 'REF-META-001',
+        ]);
+
+        $payload = [
+            'data' => [
+                'id' => 'evt_meta_123',
+                'attributes' => [
+                    'type' => 'payment.approved',
+                    'data' => [
+                        'id' => 'pay_any_123',
+                        'type' => 'payment',
+                        'attributes' => [
+                            'status' => 'approved',
+                            'metadata' => [
+                                'payment_id' => (string) $payment->payment_id,
+                                'bill_id' => (string) $bill->bill_id,
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $jsonPayload = json_encode($payload, JSON_THROW_ON_ERROR);
+        $timestamp = (string) time();
+        $signature = hash_hmac('sha256', $timestamp.'.'.$jsonPayload, 'whsec_test_123');
+
+        $this->postJson(route('billing.paymongo.webhook'), $payload, [
+            'Paymongo-Signature' => 't='.$timestamp.',te='.$signature,
+        ])->assertOk();
+
+        $payment->refresh();
+        $bill->refresh();
+
+        $this->assertSame('paid', $payment->provider_status);
+        $this->assertNotNull($payment->paid_at);
+        $this->assertSame('Paid', $bill->payment_status);
+    }
+
+    public function test_authorized_webhook_status_is_treated_as_paid(): void
+    {
+        config()->set('services.paymongo.webhook_secret', 'whsec_test_123');
+        config()->set('services.paymongo.webhook_tolerance_seconds', 600);
+
+        [, $bill] = $this->createTenantAndBill(now()->addDays(5)->toDateString(), 'Pending');
+
+        $payment = Payment::create([
+            'bill_id' => $bill->bill_id,
+            'amount_paid' => $bill->amount_due,
+            'payment_method' => 'Online',
+            'provider' => 'paymongo',
+            'provider_status' => 'pending',
+            'reference_no' => 'REF-AUTH-001',
+            'payment_date' => now(),
+        ]);
+
+        $payload = [
+            'data' => [
+                'id' => 'evt_auth_123',
+                'attributes' => [
+                    'type' => 'payment.authorized',
+                    'data' => [
+                        'id' => 'pay_auth_123',
+                        'type' => 'payment',
+                        'attributes' => [
+                            'status' => 'authorized',
+                            'metadata' => [
+                                'payment_id' => (string) $payment->payment_id,
+                                'bill_id' => (string) $bill->bill_id,
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $jsonPayload = json_encode($payload, JSON_THROW_ON_ERROR);
+        $timestamp = (string) time();
+        $signature = hash_hmac('sha256', $timestamp.'.'.$jsonPayload, 'whsec_test_123');
+
+        $this->postJson(route('billing.paymongo.webhook'), $payload, [
+            'Paymongo-Signature' => 't='.$timestamp.',te='.$signature,
         ])->assertOk();
 
         $payment->refresh();
