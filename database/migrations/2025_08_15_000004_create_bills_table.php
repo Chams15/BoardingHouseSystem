@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('description', 255)->nullable();
             $table->decimal('amount_due', 10, 2);
             $table->date('due_date');
-            $table->enum('payment_status', ['Unpaid', 'Paid', 'Overdue', 'Waived'])->default('Unpaid');
+            $table->enum('payment_status', ['Unpaid', 'Pending', 'Paid', 'Overdue', 'Waived'])->default('Unpaid');
             $table->timestamps();
 
             $table->foreign('contract_id')->references('contract_id')->on('lease_contracts')->onDelete('cascade');

@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { DoorOpen, Home, LogOut, Receipt, Users, Wifi } from 'lucide-react';
+import { DoorOpen, Home, LogOut, Receipt, Users, Wifi, Eye } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,8 +10,6 @@ import {
     DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -21,8 +19,21 @@ type Bill = {
     description: string | null;
     amount_due: string;
     due_date: string;
-    payment_status: 'Unpaid' | 'Paid' | 'Overdue' | 'Waived';
+    payment_status: 'Unpaid' | 'Pending' | 'Paid' | 'Overdue' | 'Waived';
     version: number;
+    payments?: Payment[];
+};
+
+type Payment = {
+    payment_id: number;
+    amount_paid: string;
+    payment_method: string;
+    reference_no: string | null;
+    payment_date: string;
+    provider: string | null;
+    provider_status: string | null;
+    paid_at: string | null;
+    failure_message: string | null;
 };
 
 type Room = {
@@ -63,6 +74,7 @@ type MaintenanceTicket = {
 type Props = {
     activeContract: ActiveContract | null;
     currentBill: Bill | null;
+    paymentHistory: Payment[];
     recentVisitors: VisitorLog[];
     recentTickets: MaintenanceTicket[];
 };
@@ -74,14 +86,14 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function Dashboard({ activeContract, currentBill, recentVisitors, recentTickets }: Props) {
+export default function Dashboard({ activeContract, currentBill, paymentHistory, recentVisitors, recentTickets }: Props) {
     const { props } = usePage();
     const flash = props.flash as { success?: string; error?: string } | undefined;
 
     const [payOpen, setPayOpen] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState('GCash');
-    const [referenceNo, setReferenceNo] = useState('');
     const [paying, setPaying] = useState(false);
+    const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+    const [paymentDetailsOpen, setPaymentDetailsOpen] = useState(false);
 
     function handleMoveOut() {
         if (confirm('Are you sure you want to request a move-out?')) {
@@ -95,16 +107,20 @@ export default function Dashboard({ activeContract, currentBill, recentVisitors,
         setPaying(true);
         router.post(
             `/billing/${currentBill.bill_id}/pay`,
-            { payment_method: paymentMethod, reference_no: referenceNo || undefined, version: currentBill.version },
+            { version: currentBill.version },
             {
                 onSuccess: () => {
                     setPayOpen(false);
-                    setReferenceNo('');
                     setPaying(false);
                 },
                 onError: () => setPaying(false),
             },
         );
+    }
+
+    function viewPaymentDetails(payment: Payment) {
+        setSelectedPayment(payment);
+        setPaymentDetailsOpen(true);
     }
 
     return (
@@ -231,6 +247,8 @@ export default function Dashboard({ activeContract, currentBill, recentVisitors,
                                                 className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
                                                     currentBill.payment_status === 'Paid'
                                                         ? 'bg-green-100 text-green-700'
+                                                                                                                : currentBill.payment_status === 'Pending'
+                                                                                                                    ? 'bg-blue-100 text-blue-700'
                                                         : currentBill.payment_status === 'Overdue'
                                                           ? 'bg-red-100 text-red-700'
                                                           : 'bg-yellow-100 text-yellow-700'
@@ -259,12 +277,16 @@ export default function Dashboard({ activeContract, currentBill, recentVisitors,
                                             <Button disabled className="w-full" variant="outline">
                                                 Already Paid
                                             </Button>
+                                        ) : currentBill.payment_status === 'Pending' ? (
+                                            <Button disabled className="w-full" variant="outline">
+                                                Payment In Progress
+                                            </Button>
                                         ) : (
                                             <Button
                                                 onClick={() => setPayOpen(true)}
                                                 className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                                             >
-                                                Pay Now
+                                                Pay Online
                                             </Button>
                                         )}
                                     </div>
@@ -273,14 +295,68 @@ export default function Dashboard({ activeContract, currentBill, recentVisitors,
                         </div>
 
                         {/* Recent Activity Sections */}
-                        {(recentVisitors.length > 0 || recentTickets.length > 0) && (
+                        {(recentVisitors.length > 0 || recentTickets.length > 0 || paymentHistory.length > 0) && (
                             <div className="mt-4">
                                 <div className="mb-6">
                                     <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Recent Activity</h2>
                                     <div className="mt-1 h-1 w-12 rounded bg-gradient-to-r from-orange-400 to-blue-400"></div>
                                 </div>
 
-                                <div className="grid gap-6 lg:grid-cols-2">
+                                <div className="grid gap-6 lg:grid-cols-3">
+                                    {/* Payment History */}
+                                    {paymentHistory.length > 0 && (
+                                        <div>
+                                            <h3 className="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">Payment History</h3>
+                                            <div className="space-y-3">
+                                                {paymentHistory.slice(0, 3).map((payment) => (
+                                                    <div key={payment.payment_id} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm hover:shadow-md transition-shadow dark:bg-neutral-900 dark:border-neutral-800">
+                                                        <div className="flex items-start justify-between mb-2">
+                                                            <div>
+                                                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">₱{Number(payment.amount_paid).toLocaleString()}</p>
+                                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{payment.payment_method}</p>
+                                                            </div>
+                                                            <span
+                                                                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                                    payment.provider_status === 'paid'
+                                                                        ? 'bg-green-100 text-green-700'
+                                                                        : payment.provider_status === 'pending'
+                                                                          ? 'bg-blue-100 text-blue-700'
+                                                                          : payment.provider_status === 'failed'
+                                                                            ? 'bg-red-100 text-red-700'
+                                                                            : 'bg-gray-100 text-gray-600'
+                                                                }`}
+                                                            >
+                                                                {payment.provider_status === 'paid' ? '✓' : payment.provider_status === 'pending' ? '⏳' : payment.provider_status === 'failed' ? '✗' : '—'}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(payment.payment_date).toLocaleDateString()}</p>
+                                                        {payment.reference_no && (
+                                                            <p className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-2">Ref: {payment.reference_no}</p>
+                                                        )}
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="w-full mt-3 text-xs h-8"
+                                                            onClick={() => viewPaymentDetails(payment)}
+                                                        >
+                                                            <Eye className="h-3 w-3 mr-1" />
+                                                            View Details
+                                                        </Button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            {paymentHistory.length > 3 && (
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full mt-3 text-xs"
+                                                    onClick={() => router.visit('/billing')}
+                                                >
+                                                    View All Payments
+                                                </Button>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* Recent Visitors - Left Column */}
                                     {recentVisitors.length > 0 && (
                                         <div>
@@ -396,11 +472,11 @@ export default function Dashboard({ activeContract, currentBill, recentVisitors,
             <Dialog open={payOpen} onOpenChange={setPayOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Pay Your Bill</DialogTitle>
+                        <DialogTitle>Online Payment</DialogTitle>
                         <DialogDescription>
                             {currentBill && (
                                 <>
-                                    Settle your {currentBill.description ?? 'rent'} of{' '}
+                                    You will be redirected to PayMongo to settle your {currentBill.description ?? 'rent'} of{' '}
                                     <strong>₱{Number(currentBill?.amount_due).toLocaleString()}</strong>
                                 </>
                             )}
@@ -408,36 +484,8 @@ export default function Dashboard({ activeContract, currentBill, recentVisitors,
                     </DialogHeader>
 
                     <form onSubmit={handlePay} className="space-y-4 pt-2">
-                        <div className="space-y-1">
-                            <Label>Payment Method</Label>
-                            <div className="flex gap-2">
-                                {['Cash', 'GCash', 'Credit Card'].map((method) => (
-                                    <button
-                                        key={method}
-                                        type="button"
-                                        onClick={() => setPaymentMethod(method)}
-                                        className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                                            paymentMethod === method
-                                                ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-                                                : 'border-gray-200 text-gray-600 hover:border-gray-300 dark:border-neutral-700 dark:text-gray-400'
-                                        }`}
-                                    >
-                                        {method}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="space-y-1">
-                            <Label htmlFor="reference_no">
-                                Reference No. <span className="text-gray-400 font-normal">(optional)</span>
-                            </Label>
-                            <Input
-                                id="reference_no"
-                                placeholder="e.g. GCash reference number"
-                                value={referenceNo}
-                                onChange={(e) => setReferenceNo(e.target.value)}
-                            />
+                        <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-blue-300">
+                            Online checkout is handled securely by PayMongo. Available options may include card or e-wallet, depending on your account settings.
                         </div>
 
                         <DialogFooter>
@@ -449,10 +497,87 @@ export default function Dashboard({ activeContract, currentBill, recentVisitors,
                                 disabled={paying}
                                 className="bg-blue-600 hover:bg-blue-700 text-white"
                             >
-                                {paying ? 'Processing...' : 'Confirm Payment'}
+                                {paying ? 'Redirecting...' : 'Continue to PayMongo'}
                             </Button>
                         </DialogFooter>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Payment Details Dialog */}
+            <Dialog open={paymentDetailsOpen} onOpenChange={setPaymentDetailsOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Payment Details</DialogTitle>
+                    </DialogHeader>
+                    {selectedPayment && (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Amount</p>
+                                    <p className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">₱{Number(selectedPayment.amount_paid).toLocaleString()}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Status</p>
+                                    <p className="mt-1">
+                                        <span
+                                            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                selectedPayment.provider_status === 'paid'
+                                                    ? 'bg-green-100 text-green-700'
+                                                    : selectedPayment.provider_status === 'pending'
+                                                      ? 'bg-blue-100 text-blue-700'
+                                                      : selectedPayment.provider_status === 'failed'
+                                                        ? 'bg-red-100 text-red-700'
+                                                        : 'bg-gray-100 text-gray-600'
+                                            }`}
+                                        >
+                                            {selectedPayment.provider_status === 'paid' ? '✓ Confirmed' : selectedPayment.provider_status === 'pending' ? '⏳ Pending' : selectedPayment.provider_status === 'failed' ? '✗ Failed' : 'Unknown'}
+                                        </span>
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Method</p>
+                                    <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">{selectedPayment.payment_method}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Date</p>
+                                    <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">{new Date(selectedPayment.payment_date).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+
+                            {selectedPayment.reference_no && (
+                                <div className="border-t pt-4">
+                                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Reference Number</p>
+                                    <p className="text-sm font-mono text-gray-900 dark:text-gray-100 mt-1">{selectedPayment.reference_no}</p>
+                                </div>
+                            )}
+
+                            {selectedPayment.paid_at && (
+                                <div className="border-t pt-4">
+                                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Confirmed At</p>
+                                    <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">{new Date(selectedPayment.paid_at).toLocaleString()}</p>
+                                </div>
+                            )}
+
+                            {selectedPayment.failure_message && (
+                                <div className="border-t pt-4">
+                                    <p className="text-xs font-medium text-red-600 dark:text-red-400">Failure Reason</p>
+                                    <p className="text-sm text-red-600 dark:text-red-400 mt-1">{selectedPayment.failure_message}</p>
+                                </div>
+                            )}
+
+                            <DialogFooter>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setPaymentDetailsOpen(false)}
+                                    className="w-full"
+                                >
+                                    Close
+                                </Button>
+                            </DialogFooter>
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
         </AppLayout>

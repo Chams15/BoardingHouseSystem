@@ -12,6 +12,8 @@ Route::inertia('/', 'welcome', [
     'canRegister' => Features::enabled(Features::registration()),
 ])->name('home');
 
+Route::post('webhooks/paymongo', [BillingController::class, 'webhook'])->name('billing.paymongo.webhook');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
         if (auth()->user()->role === 'Admin') {
@@ -73,9 +75,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ];
             });
 
+        // Get payment history
+        $paymentHistory = [];
+        if ($activeContract && $activeContract->contract_status === 'Active') {
+            $paymentHistory = \App\Models\Payment::whereHas('bill', function ($query) use ($activeContract) {
+                $query->where('contract_id', $activeContract->contract_id);
+            })
+            ->orderByDesc('payment_date')
+            ->take(10)
+            ->get()
+            ->map(function (\App\Models\Payment $payment) {
+                return [
+                    'payment_id' => $payment->payment_id,
+                    'amount_paid' => $payment->amount_paid,
+                    'payment_method' => $payment->payment_method,
+                    'reference_no' => $payment->reference_no,
+                    'payment_date' => $payment->payment_date,
+                    'provider' => $payment->provider,
+                    'provider_status' => $payment->provider_status,
+                    'paid_at' => $payment->paid_at,
+                    'failure_message' => $payment->failure_message,
+                ];
+            });
+        }
+
         return inertia('dashboard', [
             'activeContract' => $activeContract,
             'currentBill'    => $currentBill,
+            'paymentHistory' => $paymentHistory,
             'recentVisitors' => $recentVisitors,
             'recentTickets'  => $recentTickets,
         ]);
@@ -85,7 +112,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('rooms/{room}/request', [RoomController::class, 'requestRoom'])->name('rooms.request');
     Route::delete('rooms/requests/{roomRequest}/cancel', [RoomController::class, 'cancelRequest'])->name('rooms.request.cancel');
     Route::post('rooms/move-out', [RoomController::class, 'requestMoveOut'])->name('rooms.move-out');
+    Route::get('billing/{bill}/paymongo/return', [BillingController::class, 'returnFromCheckout'])->name('billing.paymongo.return');
     Route::post('billing/{bill}/pay', [BillingController::class, 'pay'])->name('billing.pay');
+    Route::get('billing/{bill}/payment-status', [BillingController::class, 'paymentStatus'])->name('billing.payment-status');
 
     Route::middleware([EnsureTenantHasRoom::class])->group(function () {
         Route::get('maintenance', [MaintenanceController::class, 'index'])->name('maintenance.index');
