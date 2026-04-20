@@ -68,6 +68,14 @@ export default function MaintenanceIndex({ tickets, activeContract }: Props) {
         );
     }
 
+    function markResolved(ticketId: number) {
+        if (!confirm('Mark this ticket as resolved?')) {
+            return;
+        }
+
+        router.post(`/maintenance/${ticketId}/resolve`, {}, { preserveScroll: true });
+    }
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Maintenance" />
@@ -155,12 +163,13 @@ export default function MaintenanceIndex({ tickets, activeContract }: Props) {
                                 <th className="px-4 py-3 font-medium">Priority</th>
                                 <th className="px-4 py-3 font-medium">Status</th>
                                 <th className="px-4 py-3 font-medium">Notes</th>
+                                <th className="px-4 py-3 font-medium text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y dark:divide-neutral-800">
                             {tickets.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                                         No maintenance tickets yet.
                                     </td>
                                 </tr>
@@ -193,6 +202,15 @@ export default function MaintenanceIndex({ tickets, activeContract }: Props) {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{ticket.contractor_notes ?? '—'}</td>
+                                        <td className="px-4 py-3 text-right">
+                                            {ticket.status === 'In Progress' ? (
+                                                <Button size="sm" variant="outline" onClick={() => markResolved(ticket.ticket_id)}>
+                                                    Mark Resolved
+                                                </Button>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">—</span>
+                                            )}
+                                        </td>
                                     </tr>
                                 ))
                             )}

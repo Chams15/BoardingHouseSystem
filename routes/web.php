@@ -115,6 +115,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('rooms/move-out', [RoomController::class, 'requestMoveOut'])->name('rooms.move-out');
     Route::get('verification', [VerificationController::class, 'index'])->name('verification.index');
     Route::post('verification', [VerificationController::class, 'store'])->name('verification.store');
+    Route::get('payments', [BillingController::class, 'index'])->name('payments.index');
+    Route::get('billing', [BillingController::class, 'index'])->name('billing.index');
     Route::get('billing/{bill}/paymongo/return', [BillingController::class, 'returnFromCheckout'])->name('billing.paymongo.return');
     Route::post('billing/{bill}/pay', [BillingController::class, 'pay'])->name('billing.pay');
     Route::get('billing/{bill}/payment-status', [BillingController::class, 'paymentStatus'])->name('billing.payment-status');
@@ -122,6 +124,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware([EnsureTenantHasRoom::class])->group(function () {
         Route::get('maintenance', [MaintenanceController::class, 'index'])->name('maintenance.index');
         Route::post('maintenance', [MaintenanceController::class, 'store'])->name('maintenance.store');
+        Route::post('maintenance/{ticket}/resolve', [MaintenanceController::class, 'resolve'])->name('maintenance.resolve');
 
         Route::get('visitors', [TenantVisitorController::class, 'index'])->name('visitors.index');
         Route::post('visitors', [TenantVisitorController::class, 'store'])->name('visitors.store');

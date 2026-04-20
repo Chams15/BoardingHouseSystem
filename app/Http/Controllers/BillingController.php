@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class BillingController extends Controller
@@ -22,6 +23,28 @@ class BillingController extends Controller
     private const PROVIDER_FAILURE_STATUSES = ['failed', 'canceled', 'cancelled', 'declined'];
 
     private const PROVIDER_PENDING_STATUSES = ['pending', 'processing', 'awaiting_payment_method', 'awaiting_next_action', 'active'];
+
+    public function index(Request $request): InertiaResponse
+    {
+        $user = $request->user();
+
+        $bills = Bill::query()
+            ->whereHas('leaseContract', function ($query) use ($user): void {
+                $query->where('tenant_id', $user->user_id);
+            })
+            ->with([
+                'leaseContract.room',
+                'payments' => function ($query): void {
+                    $query->orderByDesc('payment_date');
+                },
+            ])
+            ->orderByDesc('due_date')
+            ->get();
+
+        return Inertia::render('payments/index', [
+            'bills' => $bills,
+        ]);
+    }
 
     public function pay(Request $request, Bill $bill, PayMongoService $payMongo): RedirectResponse|Response
     {

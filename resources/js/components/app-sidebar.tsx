@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { DoorOpen, LayoutGrid, UserRound, Wrench } from 'lucide-react';
+import { DoorOpen, LayoutGrid, ReceiptText, UserRound, Wrench } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -36,6 +36,11 @@ export function AppSidebar() {
             title: 'Visitors',
             href: '/visitors',
             icon: UserRound,
+        },
+        {
+            title: 'Payments',
+            href: '/payments',
+            icon: ReceiptText,
         },
     ];
 

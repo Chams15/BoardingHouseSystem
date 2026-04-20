@@ -72,4 +72,22 @@ class MaintenanceController extends Controller
 
         return back()->with('success', 'Maintenance request submitted.');
     }
+
+    public function resolve(Request $request, MaintenanceTicket $ticket): RedirectResponse
+    {
+        if ($ticket->reported_by !== $request->user()->user_id) {
+            abort(403);
+        }
+
+        if ($ticket->status !== 'In Progress') {
+            return back()->with('error', 'Only tickets that are in progress can be resolved.');
+        }
+
+        $ticket->update([
+            'status' => 'Resolved',
+            'resolved_at' => now(),
+        ]);
+
+        return back()->with('success', 'Ticket marked as resolved.');
+    }
 }

@@ -71,7 +71,6 @@ export default function AdminMaintenanceIndex({ tickets, recurringByRoom, recurr
 
     const { data, setData, put, processing, errors, clearErrors } = useForm({
         priority: 'Medium' as 'Low' | 'Medium' | 'High',
-        status: 'Pending' as 'Pending' | 'In Progress' | 'Resolved',
         contractor_notes: '',
     });
 
@@ -83,7 +82,6 @@ export default function AdminMaintenanceIndex({ tickets, recurringByRoom, recurr
         setEditingTicket(ticket);
         setData({
             priority: ticket.priority,
-            status: ticket.status,
             contractor_notes: ticket.contractor_notes ?? '',
         });
         clearErrors();
@@ -255,21 +253,6 @@ export default function AdminMaintenanceIndex({ tickets, recurringByRoom, recurr
 
                         <form onSubmit={handleUpdateSubmit} className="space-y-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="status" className="text-gray-700 dark:text-gray-300">Status</Label>
-                                <select
-                                    id="status"
-                                    value={data.status}
-                                    onChange={(e) => setData('status', e.target.value as 'Pending' | 'In Progress' | 'Resolved')}
-                                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-100"
-                                >
-                                    <option value="Pending">Pending</option>
-                                    <option value="In Progress">In Progress</option>
-                                    <option value="Resolved">Resolved</option>
-                                </select>
-                                <InputError message={errors.status} />
-                            </div>
-
-                            <div className="grid gap-2">
                                 <Label htmlFor="priority" className="text-gray-700 dark:text-gray-300">Priority</Label>
                                 <select
                                     id="priority"
@@ -292,7 +275,7 @@ export default function AdminMaintenanceIndex({ tickets, recurringByRoom, recurr
                                     onChange={(e) => setData('contractor_notes', e.target.value)}
                                     rows={4}
                                     className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-100"
-                                    placeholder="Add update notes, findings, or next actions."
+                                    placeholder="Add your reply/update for the tenant."
                                 />
                                 <InputError message={errors.contractor_notes} />
                             </div>

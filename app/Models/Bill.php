@@ -25,16 +25,24 @@ class Bill extends Model
         'contract_id',
         'bill_type',
         'description',
+        'original_amount_due',
         'amount_due',
         'due_date',
         'payment_status',
+        'discount_amount',
+        'discount_reason',
+        'waived_amount',
+        'waived_reason',
         'version',
     ];
 
     protected function casts(): array
     {
         return [
+            'original_amount_due' => 'decimal:2',
             'amount_due' => 'decimal:2',
+            'discount_amount' => 'decimal:2',
+            'waived_amount' => 'decimal:2',
             'due_date'   => 'date',
             'version'    => 'integer',
         ];

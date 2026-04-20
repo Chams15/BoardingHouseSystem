@@ -35,6 +35,7 @@ class CreateNewUser implements CreatesNewUsers
             $user->tenantProfile()->create([
                 'full_name' => $input['full_name'],
                 'contact_number' => $input['contact_number'],
+                'contact_address' => $input['contact_address'],
                 'emergency_contact' => $input['emergency_contact'] ?? null,
             ]);
 

@@ -7,8 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
-import { login } from '@/routes';
-import { store } from '@/routes/register';
 
 export default function Register() {
     return (
@@ -18,7 +16,8 @@ export default function Register() {
         >
             <Head title="Register" />
             <Form
-                {...store.form()}
+                action="/register"
+                method="post"
                 resetOnSuccess={['password', 'password_confirmation']}
                 disableWhileProcessing
                 className="flex flex-col gap-6"
@@ -73,13 +72,27 @@ export default function Register() {
                             </div>
 
                             <div className="grid gap-2">
+                                <Label htmlFor="contact_address">Contact Address</Label>
+                                <Input
+                                    id="contact_address"
+                                    type="text"
+                                    required
+                                    tabIndex={4}
+                                    autoComplete="street-address"
+                                    name="contact_address"
+                                    placeholder="House no., street, barangay, city"
+                                />
+                                <InputError message={errors.contact_address} />
+                            </div>
+
+                            <div className="grid gap-2">
                                 <Label htmlFor="emergency_contact">Emergency Contact (optional)</Label>
                                 <Input
                                     id="emergency_contact"
                                     type="text"
-                                    tabIndex={4}
+                                    tabIndex={5}
                                     name="emergency_contact"
-                                    placeholder="Emergency Contact Numnber"
+                                    placeholder="Emergency contact number"
                                 />
                                 <InputError message={errors.emergency_contact} />
                             </div>
@@ -89,7 +102,7 @@ export default function Register() {
                                 <PasswordInput
                                     id="password"
                                     required
-                                    tabIndex={5}
+                                    tabIndex={6}
                                     autoComplete="new-password"
                                     name="password"
                                     placeholder="Password"
@@ -104,7 +117,7 @@ export default function Register() {
                                 <PasswordInput
                                     id="password_confirmation"
                                     required
-                                    tabIndex={6}
+                                    tabIndex={7}
                                     autoComplete="new-password"
                                     name="password_confirmation"
                                     placeholder="Confirm password"
@@ -117,7 +130,7 @@ export default function Register() {
                             <Button
                                 type="submit"
                                 className="mt-2 w-full bg-orange-500 hover:bg-orange-600 text-white"
-                                tabIndex={7}
+                                tabIndex={8}
                                 data-test="register-user-button"
                             >
                                 {processing && <Spinner />}
@@ -127,7 +140,7 @@ export default function Register() {
 
                         <div className="text-center text-sm text-muted-foreground">
                             Already have an account?{' '}
-                            <TextLink href={login()} tabIndex={8}>
+                            <TextLink href="/login" tabIndex={9}>
                                 Log in
                             </TextLink>
                         </div>

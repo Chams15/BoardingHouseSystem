@@ -50,6 +50,9 @@ Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])
 
         Route::get('billing', [AdminBillingController::class, 'index'])->name('billing.index');
         Route::post('billing/generate-monthly', [AdminBillingController::class, 'generateMonthlyBills'])->name('billing.generate-monthly');
+        Route::post('billing/{bill}/discount', [AdminBillingController::class, 'discountBill'])->name('billing.discount');
+        Route::post('billing/{bill}/offline-payment', [AdminBillingController::class, 'recordOfflinePayment'])->name('billing.offline-payment');
+        Route::post('billing/{bill}/waive', [AdminBillingController::class, 'waiveBill'])->name('billing.waive');
 
         Route::get('maintenance', [MaintenanceController::class, 'index'])->name('maintenance.index');
         Route::put('maintenance/{ticket}', [MaintenanceController::class, 'update'])->name('maintenance.update');

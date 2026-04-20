@@ -92,17 +92,23 @@ class MaintenanceController extends Controller
     {
         $validated = $request->validate([
             'priority' => ['required', 'in:Low,Medium,High'],
-            'status' => ['required', 'in:Pending,In Progress,Resolved'],
             'contractor_notes' => ['nullable', 'string', 'max:5000'],
         ]);
 
+        $notes = trim((string) ($validated['contractor_notes'] ?? ''));
+        $nextStatus = $ticket->status;
+
+        if ($ticket->status !== 'Resolved' && $notes !== '') {
+            $nextStatus = 'In Progress';
+        }
+
         $ticket->update([
             'priority' => $validated['priority'],
-            'status' => $validated['status'],
+            'status' => $nextStatus,
             'contractor_notes' => $validated['contractor_notes'] ?? null,
-            'resolved_at' => $validated['status'] === 'Resolved' ? now() : null,
+            'resolved_at' => $nextStatus === 'Resolved' ? ($ticket->resolved_at ?? now()) : null,
         ]);
 
-        return back()->with('success', 'Ticket updated successfully.');
+        return back()->with('success', 'Ticket reply saved successfully.');
     }
 }
