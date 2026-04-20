@@ -65,7 +65,7 @@ class AuditLogger
             'old_values' => self::sanitize($oldValues),
             'new_values' => self::sanitize($newValues),
             'action_meta' => $actionMeta,
-            'rollback_of_log_id' => $rollbackOfLogId,
+            'rollback_of_audit_log_id' => $rollbackOfLogId,
         ]);
     }
 
@@ -95,7 +95,7 @@ class AuditLogger
                 'time_ms' => $timeMs,
                 'connection' => $connectionName,
             ],
-            'rollback_of_log_id' => null,
+            'rollback_of_audit_log_id' => null,
         ]);
     }
 

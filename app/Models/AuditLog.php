@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AuditLog extends Model
 {
-    protected $primaryKey = 'log_id';
+    protected $primaryKey = 'audit_log_id';
 
     protected $fillable = [
         'actor_user_id',
@@ -18,7 +18,7 @@ class AuditLog extends Model
         'old_values',
         'new_values',
         'action_meta',
-        'rollback_of_log_id',
+        'rollback_of_audit_log_id',
     ];
 
     protected function casts(): array
@@ -27,7 +27,7 @@ class AuditLog extends Model
             'old_values' => 'array',
             'new_values' => 'array',
             'action_meta' => 'array',
-            'rollback_of_log_id' => 'integer',
+            'rollback_of_audit_log_id' => 'integer',
         ];
     }
 
@@ -38,6 +38,6 @@ class AuditLog extends Model
 
     public function rolledBackTarget(): BelongsTo
     {
-        return $this->belongsTo(self::class, 'rollback_of_log_id', 'log_id');
+        return $this->belongsTo(self::class, 'rollback_of_audit_log_id', 'audit_log_id');
     }
 }

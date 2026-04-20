@@ -66,6 +66,70 @@ class BillingLifecycleTest extends TestCase
         ]);
     }
 
+    public function test_payment_initiation_refreshes_checkout_session_when_payment_intent_is_missing(): void
+    {
+        config()->set('services.paymongo.secret_key', 'sk_test_123');
+
+        $this->mock(PayMongoService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('createCheckoutSession')
+                ->once()
+                ->andReturn([
+                    'data' => [
+                        'id' => 'cs_test_123',
+                        'attributes' => [
+                            'checkout_url' => 'https://checkout.test/session/cs_test_123',
+                            'expires_at' => now()->addMinutes(30)->toIso8601String(),
+                        ],
+                    ],
+                ]);
+
+            $mock->shouldReceive('extractCheckoutDetails')
+                ->twice()
+                ->andReturnValues([
+                    [
+                        'checkout_session_id' => 'cs_test_123',
+                        'checkout_url' => 'https://checkout.test/session/cs_test_123',
+                        'payment_intent_id' => null,
+                        'expires_at' => now()->addMinutes(30),
+                    ],
+                    [
+                        'checkout_session_id' => 'cs_test_123',
+                        'checkout_url' => 'https://checkout.test/session/cs_test_123',
+                        'payment_intent_id' => 'pi_test_123',
+                        'expires_at' => now()->addMinutes(30),
+                    ],
+                ]);
+
+            $mock->shouldReceive('retrieveCheckoutSession')
+                ->once()
+                ->with('cs_test_123')
+                ->andReturn([
+                    'data' => [
+                        'id' => 'cs_test_123',
+                        'attributes' => [
+                            'checkout_url' => 'https://checkout.test/session/cs_test_123',
+                            'payment_intent' => ['id' => 'pi_test_123'],
+                            'expires_at' => now()->addMinutes(30)->toIso8601String(),
+                        ],
+                    ],
+                ]);
+        });
+
+        [$tenant, $bill] = $this->createTenantAndBill(now()->addDays(5)->toDateString(), 'Unpaid');
+
+        $response = $this->actingAs($tenant)->post(route('billing.pay', $bill), [
+            'version' => $bill->version,
+        ]);
+
+        $response->assertStatus(302);
+
+        $this->assertDatabaseHas('payments', [
+            'bill_id' => $bill->bill_id,
+            'provider_checkout_session_id' => 'cs_test_123',
+            'provider_payment_intent_id' => 'pi_test_123',
+        ]);
+    }
+
     public function test_cancelled_checkout_restores_unsettled_bill_status(): void
     {
         [$tenant, $bill] = $this->createTenantAndBill(now()->addDays(3)->toDateString(), 'Pending');
@@ -301,6 +365,30 @@ class BillingLifecycleTest extends TestCase
 
         $this->assertSame('paid', $payment->provider_status);
         $this->assertNotNull($payment->paid_at);
+        $this->assertSame('Paid', $bill->payment_status);
+    }
+
+    public function test_settled_payment_requires_explicit_bill_reconciliation(): void
+    {
+        [, $bill] = $this->createTenantAndBill(now()->addDays(5)->toDateString(), 'Pending');
+
+        Payment::create([
+            'bill_id' => $bill->bill_id,
+            'amount_paid' => $bill->amount_due,
+            'payment_method' => 'Online',
+            'provider' => 'paymongo',
+            'provider_status' => 'paid',
+            'paid_at' => now(),
+            'payment_date' => now(),
+            'reference_no' => 'REF-EXPLICIT-001',
+        ]);
+
+        $bill->refresh();
+        $this->assertSame('Pending', $bill->payment_status);
+
+        $bill->reconcilePaymentStatus();
+
+        $bill->refresh();
         $this->assertSame('Paid', $bill->payment_status);
     }
 

@@ -76,17 +76,47 @@ class PayMongoService
         return hash_equals($direct, trim($signatureHeader));
     }
 
+    public function retrieveCheckoutSession(string $checkoutSessionId): array
+    {
+        $response = $this->request()->get('/checkout_sessions/'.$checkoutSessionId);
+
+        if (! $response->successful()) {
+            throw new \RuntimeException($this->extractErrorMessage($response));
+        }
+
+        return $response->json();
+    }
+
     public function extractCheckoutDetails(array $checkoutResponse): array
     {
         $data = Arr::get($checkoutResponse, 'data', []);
+        $attributes = Arr::get($data, 'attributes', []);
+        $paymentIntent = Arr::get($attributes, 'payment_intent', []);
 
         return [
             'checkout_session_id' => Arr::get($data, 'id'),
-            'checkout_url' => Arr::get($data, 'attributes.checkout_url'),
-            'payment_intent_id' => Arr::get($data, 'attributes.payment_intent.id'),
-            'reference_no' => Arr::get($data, 'attributes.reference_number'),
-            'expires_at' => Arr::get($data, 'attributes.expires_at'),
+            'checkout_url' => Arr::get($attributes, 'checkout_url')
+                ?: Arr::get($attributes, 'checkout_url.url')
+                ?: Arr::get($attributes, 'url'),
+            'payment_intent_id' => Arr::get($paymentIntent, 'id')
+                ?: Arr::get($attributes, 'payment_intent_id')
+                ?: Arr::get($attributes, 'payment_intent.id')
+                ?: Arr::get($attributes, 'payment_intent.attributes.id')
+                ?: Arr::get($attributes, 'payment_intent.attributes.payment_intent_id'),
+            'reference_no' => Arr::get($attributes, 'reference_number')
+                ?: Arr::get($attributes, 'metadata.reference_no')
+                ?: Arr::get($attributes, 'metadata.reference_number'),
+            'expires_at' => Arr::get($attributes, 'expires_at')
+                ?: Arr::get($attributes, 'data.attributes.expires_at'),
         ];
+    }
+
+    public function extractCheckoutStatus(array $checkoutResponse): ?string
+    {
+        return Arr::get($checkoutResponse, 'data.attributes.status')
+            ?? Arr::get($checkoutResponse, 'data.attributes.payment_intent.attributes.status')
+            ?? Arr::get($checkoutResponse, 'data.attributes.payment_intent.status')
+            ?? Arr::get($checkoutResponse, 'data.attributes.data.attributes.status');
     }
 
     private function request()

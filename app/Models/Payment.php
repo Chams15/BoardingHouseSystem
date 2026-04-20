@@ -4,11 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\DB;
 
 class Payment extends Model
 {
     protected $primaryKey = 'payment_id';
+
+    public const SETTLED_PROVIDER_STATUSES = ['paid', 'validated', 'approved', 'authorized', 'authorised', 'succeeded', 'completed', 'success'];
+
+    public const PENDING_PROVIDER_STATUSES = ['pending', 'processing', 'awaiting_payment_method', 'awaiting_next_action', 'active'];
+
+    public const FAILED_PROVIDER_STATUSES = ['failed', 'canceled', 'cancelled', 'declined', 'expired'];
 
     protected $fillable = [
         'bill_id',
@@ -45,33 +50,11 @@ class Payment extends Model
         return $this->belongsTo(Bill::class, 'bill_id', 'bill_id');
     }
 
-    protected static function booted(): void
-    {
-        static::saved(function (Payment $payment): void {
-            if (! $payment->isSettled()) {
-                return;
-            }
-
-            DB::transaction(function () use ($payment): void {
-                $bill = Bill::where('bill_id', $payment->bill_id)->lockForUpdate()->first();
-
-                if (! $bill || $bill->payment_status === 'Paid') {
-                    return;
-                }
-
-                $bill->update([
-                    'payment_status' => 'Paid',
-                    'version' => $bill->version + 1,
-                ]);
-            });
-        });
-    }
-
-    private function isSettled(): bool
+    public function isSettled(): bool
     {
         $providerStatus = strtolower((string) $this->provider_status);
 
-        if (in_array($providerStatus, ['paid', 'succeeded', 'completed', 'success'], true)) {
+        if (in_array($providerStatus, self::SETTLED_PROVIDER_STATUSES, true)) {
             return true;
         }
 

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import AdminLayout from '@/layouts/admin-layout';
 
 type AuditLogItem = {
-    log_id: number;
+    audit_log_id: number;
     event_type: 'created' | 'updated' | 'deleted' | 'rolled_back' | 'sql_query';
     table_name: string;
     record_pk: string;
@@ -13,7 +13,7 @@ type AuditLogItem = {
         user_id: number;
         email: string;
     };
-    rollback_of_log_id?: number | null;
+    rollback_of_audit_log_id?: number | null;
 };
 
 type PaginatedLogs = {
@@ -89,7 +89,7 @@ export default function AdminAuditLogsIndex({ logs }: Props) {
                                 logs.data.map((log) => {
                                     const canRollback = ['created', 'updated', 'deleted'].includes(log.event_type);
                                     return (
-                                        <tr key={log.log_id} className="hover:bg-gray-50 dark:hover:bg-neutral-800">
+                                        <tr key={log.audit_log_id} className="hover:bg-gray-50 dark:hover:bg-neutral-800">
                                             <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
                                                 {new Date(log.created_at).toLocaleString()}
                                             </td>
@@ -109,7 +109,7 @@ export default function AdminAuditLogsIndex({ logs }: Props) {
                                                         variant="ghost"
                                                         size="sm"
                                                         className="text-orange-600 hover:text-orange-800"
-                                                        onClick={() => handleRollback(log.log_id)}
+                                                        onClick={() => handleRollback(log.audit_log_id)}
                                                     >
                                                         <RotateCcw className="mr-1 h-4 w-4" />
                                                         Rollback

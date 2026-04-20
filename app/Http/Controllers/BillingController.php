@@ -10,12 +10,19 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 class BillingController extends Controller
 {
+    private const PROVIDER_SUCCESS_STATUSES = ['paid', 'succeeded', 'completed', 'approved', 'validated', 'authorized', 'authorised'];
+
+    private const PROVIDER_FAILURE_STATUSES = ['failed', 'canceled', 'cancelled', 'declined'];
+
+    private const PROVIDER_PENDING_STATUSES = ['pending', 'processing', 'awaiting_payment_method', 'awaiting_next_action', 'active'];
+
     public function pay(Request $request, Bill $bill, PayMongoService $payMongo): RedirectResponse|Response
     {
         $user = $request->user();
@@ -32,12 +39,16 @@ class BillingController extends Controller
             return back()->with('error', 'PayMongo is not configured yet. Add PAYMONGO_SECRET_KEY in your .env file.');
         }
 
-        $checkoutUrl = null;
+        $payment = null;
 
         try {
-            DB::transaction(function () use ($bill, $validated, $user, $payMongo, &$checkoutUrl) {
+            DB::transaction(function () use ($bill, $validated, $user, &$payment): void {
                 /** @var Bill $locked */
                 $locked = Bill::with('leaseContract')->where('bill_id', $bill->bill_id)->lockForUpdate()->first();
+
+                if (! $locked) {
+                    throw new \RuntimeException('Bill not found.');
+                }
 
                 if ($locked->payment_status === 'Paid') {
                     throw new \RuntimeException('This bill has already been paid.');
@@ -48,13 +59,13 @@ class BillingController extends Controller
                 }
 
                 $payment = Payment::create([
-                    'bill_id'        => $locked->bill_id,
-                    'amount_paid'    => $locked->amount_due,
+                    'bill_id' => $locked->bill_id,
+                    'amount_paid' => $locked->amount_due,
                     'payment_method' => 'Online',
-                    'provider'       => 'paymongo',
+                    'provider' => 'paymongo',
                     'provider_status' => 'pending',
-                    'reference_no'   => Str::upper(Str::random(10)),
-                    'payment_date'   => now(),
+                    'reference_no' => Str::upper(Str::random(10)),
+                    'payment_date' => now(),
                 ]);
 
                 if ($locked->payment_status !== 'Pending') {
@@ -63,87 +74,167 @@ class BillingController extends Controller
                         'version' => $locked->version + 1,
                     ]);
                 }
-
-                $tenantName = $user->tenantProfile?->full_name ?: $user->email;
-                $amountInCentavos = (int) round((float) $locked->amount_due * 100);
-                $paymentMethodTypes = config('services.paymongo.payment_method_types', ['card', 'gcash']);
-
-                if (! is_array($paymentMethodTypes) || empty($paymentMethodTypes)) {
-                    $paymentMethodTypes = ['card', 'gcash'];
-                }
-
-                $session = $payMongo->createCheckoutSession([
-                    'billing' => [
-                        'name' => $tenantName,
-                        'email' => $user->email,
-                    ],
-                    'metadata' => [
-                        'bill_id' => (string) $locked->bill_id,
-                        'payment_id' => (string) $payment->payment_id,
-                        'reference_no' => (string) $payment->reference_no,
-                        'tenant_id' => (string) $user->user_id,
-                    ],
-                    'line_items' => [[
-                        'currency' => 'PHP',
-                        'amount' => $amountInCentavos,
-                        'name' => $locked->bill_type,
-                        'quantity' => 1,
-                        'description' => $locked->description ?: 'Boarding house bill',
-                    ]],
-                    'payment_method_types' => $paymentMethodTypes,
-                    'success_url' => route('billing.paymongo.return', ['bill' => $locked->bill_id, 'status' => 'success']),
-                    'cancel_url' => route('billing.paymongo.return', ['bill' => $locked->bill_id, 'status' => 'cancel']),
-                    'description' => $locked->description ?: 'Billing payment',
-                    'send_email_receipt' => false,
-                    'show_description' => true,
-                    'show_line_items' => true,
-                ]);
-
-                $details = $payMongo->extractCheckoutDetails($session);
-                $checkoutUrl = $details['checkout_url'];
-
-                if (blank($checkoutUrl)) {
-                    throw new \RuntimeException('Unable to create PayMongo checkout URL. Please try again.');
-                }
-
-                $payment->update([
-                    'provider_checkout_session_id' => $details['checkout_session_id'],
-                    'provider_payment_intent_id' => $details['payment_intent_id'],
-                    'checkout_url' => $checkoutUrl,
-                    'checkout_expires_at' => $details['expires_at'],
-                    'provider_metadata' => $session,
-                ]);
             });
         } catch (\RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
 
+        if (! $payment instanceof Payment) {
+            return back()->with('error', 'Unable to initialize payment. Please try again.');
+        }
+
+        $checkoutUrl = null;
+        $amountInCentavos = (int) round((float) $payment->amount_paid * 100);
+        $paymentMethodTypes = config('services.paymongo.payment_method_types', ['card', 'gcash']);
+
+        if (! is_array($paymentMethodTypes) || empty($paymentMethodTypes)) {
+            $paymentMethodTypes = ['card', 'gcash'];
+        }
+
+        $tenantName = $user->tenantProfile?->full_name ?: $user->email;
+
+        $payload = [
+            'billing' => [
+                'name' => $tenantName,
+                'email' => $user->email,
+            ],
+            'metadata' => [
+                'bill_id' => (string) $payment->bill_id,
+                'payment_id' => (string) $payment->payment_id,
+                'reference_no' => (string) $payment->reference_no,
+                'tenant_id' => (string) $user->user_id,
+            ],
+            'line_items' => [[
+                'currency' => 'PHP',
+                'amount' => $amountInCentavos,
+                'name' => $bill->bill_type,
+                'quantity' => 1,
+                'description' => $bill->description ?: 'Boarding house bill',
+            ]],
+            'payment_method_types' => $paymentMethodTypes,
+            'success_url' => route('billing.paymongo.return', [
+                'bill' => $bill->bill_id,
+                'status' => 'success',
+                'payment' => $payment->payment_id,
+            ]),
+            'cancel_url' => route('billing.paymongo.return', [
+                'bill' => $bill->bill_id,
+                'status' => 'cancel',
+                'payment' => $payment->payment_id,
+            ]),
+            'description' => $bill->description ?: 'Billing payment',
+            'send_email_receipt' => false,
+            'show_description' => true,
+            'show_line_items' => true,
+        ];
+
+        try {
+            $session = $payMongo->createCheckoutSession($payload);
+            $details = $payMongo->extractCheckoutDetails($session);
+
+            if (blank($details['checkout_session_id']) && ! blank($details['checkout_url'])) {
+                $details['checkout_session_id'] = $this->extractCheckoutSessionIdFromUrl((string) $details['checkout_url']);
+            }
+
+            if (blank($details['payment_intent_id']) && ! blank($details['checkout_session_id'])) {
+                $refreshedSession = $payMongo->retrieveCheckoutSession((string) $details['checkout_session_id']);
+                $refreshedDetails = $payMongo->extractCheckoutDetails($refreshedSession);
+
+                $details['payment_intent_id'] = $refreshedDetails['payment_intent_id'] ?: $details['payment_intent_id'];
+                $details['checkout_url'] = $refreshedDetails['checkout_url'] ?: $details['checkout_url'];
+                $details['expires_at'] = $refreshedDetails['expires_at'] ?: $details['expires_at'];
+                $session = $refreshedSession;
+            }
+
+            $checkoutUrl = $details['checkout_url'];
+
+            if (blank($checkoutUrl)) {
+                throw new \RuntimeException('Unable to create PayMongo checkout URL. Please try again.');
+            }
+
+            $payment->update([
+                'provider_checkout_session_id' => $details['checkout_session_id'],
+                'provider_payment_intent_id' => $details['payment_intent_id'],
+                'checkout_url' => $checkoutUrl,
+                'checkout_expires_at' => $details['expires_at'],
+                'provider_metadata' => $session,
+            ]);
+        } catch (\RuntimeException $e) {
+            $payment->update([
+                'provider_status' => 'failed',
+                'failure_message' => $e->getMessage(),
+            ]);
+
+            DB::transaction(function () use ($bill): void {
+                $this->updateBillStatusIfNeeded($bill->bill_id);
+            });
+
+            return back()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('Failed creating PayMongo checkout session.', [
+                'payment_id' => $payment->payment_id,
+                'bill_id' => $payment->bill_id,
+                'message' => $e->getMessage(),
+            ]);
+
+            $payment->update([
+                'provider_status' => 'failed',
+                'failure_message' => 'Unable to start online payment right now. Please try again.',
+            ]);
+
+            DB::transaction(function () use ($bill): void {
+                $this->updateBillStatusIfNeeded($bill->bill_id);
+            });
+
+            return back()->with('error', 'Unable to start online payment right now. Please try again.');
+        }
+
         return Inertia::location($checkoutUrl);
     }
 
-    public function returnFromCheckout(Request $request, Bill $bill): RedirectResponse
+    public function returnFromCheckout(Request $request, Bill $bill, PayMongoService $payMongo): RedirectResponse
     {
         if ($bill->leaseContract->tenant_id !== $request->user()->user_id) {
             abort(403);
         }
 
         $status = (string) $request->query('status', 'success');
+        $paymentId = (int) $request->query('payment', 0);
 
-        if ($status === 'cancel') {
-            DB::transaction(function () use ($bill): void {
-                $lockedBill = Bill::where('bill_id', $bill->bill_id)->lockForUpdate()->first();
+        if ($status === 'cancel' || $status === 'failed') {
+            DB::transaction(function () use ($bill, $paymentId): void {
+                if ($paymentId > 0) {
+                    $latest = Payment::where('payment_id', $paymentId)->lockForUpdate()->first();
 
-                if (! $lockedBill || in_array($lockedBill->payment_status, ['Paid', 'Waived'], true)) {
-                    return;
+                    if ($latest && $latest->provider_status === 'pending') {
+                        $latest->update([
+                            'provider_status' => 'cancelled',
+                            'failure_message' => 'Checkout was canceled by tenant.',
+                        ]);
+                    }
                 }
 
-                $lockedBill->update([
-                    'payment_status' => $this->resolveUnsettledBillStatus($lockedBill),
-                    'version' => $lockedBill->version + 1,
-                ]);
+                $this->updateBillStatusIfNeeded($bill->bill_id);
             });
 
             return redirect()->route('dashboard')->with('error', 'Payment was canceled. You can retry anytime.');
+        }
+
+        if ($paymentId > 0) {
+            /** @var Payment|null $payment */
+            $payment = Payment::query()
+                ->where('payment_id', $paymentId)
+                ->where('bill_id', $bill->bill_id)
+                ->where('provider', 'paymongo')
+                ->first();
+
+            if ($payment) {
+                $payment = $this->refreshPaymentFromCheckoutSession($payment, $payMongo);
+
+                if ($payment->provider_status === 'paid') {
+                    return redirect()->route('dashboard')->with('success', 'Payment verified successfully.');
+                }
+            }
         }
 
         return redirect()
@@ -161,11 +252,24 @@ class BillingController extends Controller
         }
 
         $event = $request->json()->all();
-        \Log::info('PayMongo Webhook Received', ['event' => $event]);
+        Log::info('PayMongo webhook received', [
+            'event_id' => Arr::get($event, 'data.id') ?: Arr::get($event, 'id'),
+            'event_type' => Arr::get($event, 'data.attributes.type') ?: Arr::get($event, 'type'),
+        ]);
 
         $eventId = Arr::get($event, 'data.id') ?: Arr::get($event, 'id');
         $eventType = (string) (Arr::get($event, 'data.attributes.type') ?: Arr::get($event, 'type', 'unknown'));
-        $resource = Arr::get($event, 'data.attributes.data', []);
+        $resource = Arr::get($event, 'data.attributes.data');
+
+        // Some webhook deliveries contain the resource directly (no data.attributes.data wrapper).
+        if (! is_array($resource) || empty($resource)) {
+            $candidateResource = Arr::get($event, 'data');
+            if (is_array($candidateResource) && Arr::has($candidateResource, 'attributes')) {
+                $resource = $candidateResource;
+            } else {
+                $resource = $event;
+            }
+        }
 
         $resourceType = (string) Arr::get($resource, 'type', '');
         $resourceId = Arr::get($resource, 'id');
@@ -198,11 +302,30 @@ class BillingController extends Controller
         $metadataBillId = Arr::get($resource, 'attributes.metadata.bill_id')
             ?: Arr::get($resource, 'attributes.payment_intent.attributes.metadata.bill_id');
 
-        $normalizedStatus = $this->normalizeProviderStatus($eventType, Arr::get($resource, 'attributes.status'));
+        $resourceStatus = Arr::get($resource, 'attributes.status');
+        $paymentIntentStatus = Arr::get($resource, 'attributes.payment_intent.attributes.status');
+        $payments = Arr::get($resource, 'attributes.payments', []);
+        $hasPaidPayment = is_array($payments) && collect($payments)->contains(function ($payment): bool {
+            return Str::lower((string) Arr::get($payment, 'attributes.status')) === 'paid';
+        });
 
-        \Log::info('Webhook Parsed', [
+        if ($hasPaidPayment) {
+            $resourceStatus = 'paid';
+        } elseif (blank($resourceStatus) && ! blank($paymentIntentStatus)) {
+            $resourceStatus = $paymentIntentStatus;
+        } elseif ($resourceStatus === 'active' && Str::lower((string) $paymentIntentStatus) === 'succeeded') {
+            // Checkout sessions can remain active while payment intent is already settled.
+            $resourceStatus = 'succeeded';
+        }
+
+        $normalizedStatus = $this->normalizeProviderStatus($eventType, $resourceStatus);
+
+        Log::info('PayMongo webhook parsed', [
             'eventType' => $eventType,
             'resourceStatus' => Arr::get($resource, 'attributes.status'),
+            'paymentIntentStatus' => $paymentIntentStatus,
+            'hasPaidPayment' => $hasPaidPayment,
+            'derivedStatus' => $resourceStatus,
             'normalizedStatus' => $normalizedStatus,
             'checkoutSessionId' => $checkoutSessionId,
             'paymentIntentId' => $paymentIntentId,
@@ -211,11 +334,14 @@ class BillingController extends Controller
             'metadataBillId' => $metadataBillId,
         ]);
 
-        DB::transaction(function () use ($checkoutSessionId, $paymentIntentId, $referenceNo, $metadataPaymentId, $metadataBillId, $eventId, $normalizedStatus, $event) {
+        DB::transaction(function () use ($checkoutSessionId, $paymentIntentId, $referenceNo, $metadataPaymentId, $metadataBillId, $eventId, $normalizedStatus, $event): void {
             $query = Payment::query()->where('provider', 'paymongo');
 
             if (blank($checkoutSessionId) && blank($paymentIntentId) && blank($referenceNo)) {
-                \Log::warning('No checkout or payment intent ID found in webhook');
+                Log::warning('PayMongo webhook does not include lookup identifiers.', [
+                    'event_id' => $eventId,
+                    'event_type' => Arr::get($event, 'data.attributes.type') ?: Arr::get($event, 'type'),
+                ]);
                 return;
             }
 
@@ -250,14 +376,14 @@ class BillingController extends Controller
                 $payment = Payment::query()
                     ->where('provider', 'paymongo')
                     ->where('bill_id', (int) $metadataBillId)
-                    ->whereIn('provider_status', ['pending', 'processing'])
+                    ->whereIn('provider_status', self::PROVIDER_PENDING_STATUSES)
                     ->latest('created_at')
                     ->lockForUpdate()
                     ->first();
             }
 
             if (! $payment) {
-                \Log::warning('Payment not found for webhook', [
+                Log::warning('PayMongo webhook payment not found.', [
                     'checkoutSessionId' => $checkoutSessionId,
                     'paymentIntentId' => $paymentIntentId,
                     'referenceNo' => $referenceNo,
@@ -268,7 +394,14 @@ class BillingController extends Controller
             }
 
             if (! blank($eventId) && $payment->provider_event_id === $eventId) {
-                \Log::info('Duplicate webhook event, skipping');
+                Log::info('PayMongo webhook duplicate event ignored.', [
+                    'event_id' => $eventId,
+                    'payment_id' => $payment->payment_id,
+                ]);
+                return;
+            }
+
+            if ($payment->paid_at !== null && $normalizedStatus === 'paid') {
                 return;
             }
 
@@ -276,7 +409,9 @@ class BillingController extends Controller
                 'provider_event_id' => $eventId,
                 'provider_status' => $normalizedStatus,
                 'provider_metadata' => $event,
-                'failure_message' => $normalizedStatus === 'failed' ? 'Payment failed via PayMongo.' : null,
+                'failure_message' => in_array($normalizedStatus, self::PROVIDER_FAILURE_STATUSES, true)
+                    ? 'Payment failed via PayMongo.'
+                    : null,
             ];
 
             if ($normalizedStatus === 'paid') {
@@ -285,27 +420,12 @@ class BillingController extends Controller
             }
 
             $payment->update($updatePayload);
-            \Log::info('Payment updated', ['paymentId' => $payment->payment_id, 'status' => $normalizedStatus]);
+            Log::info('Payment status updated from webhook.', [
+                'payment_id' => $payment->payment_id,
+                'status' => $normalizedStatus,
+            ]);
 
-            if ($normalizedStatus === 'paid') {
-                $bill = Bill::where('bill_id', $payment->bill_id)->lockForUpdate()->first();
-
-                if ($bill && $bill->payment_status !== 'Paid') {
-                    $bill->update([
-                        'payment_status' => 'Paid',
-                        'version' => $bill->version + 1,
-                    ]);
-                    \Log::info('Bill marked as Paid', ['billId' => $bill->bill_id]);
-                } else {
-                    \Log::info('Bill not updated', [
-                        'billFound' => (bool) $bill,
-                        'billStatus' => $bill?->payment_status,
-                    ]);
-                }
-            } else {
-                // Reconcile bill status when payment is not yet settled.
-                $this->updateBillStatusIfNeeded($payment->bill_id);
-            }
+            $this->updateBillStatusIfNeeded($payment->bill_id);
         });
 
         return response()->json(['received' => true]);
@@ -313,57 +433,13 @@ class BillingController extends Controller
 
     private function updateBillStatusIfNeeded(int $billId): void
     {
-        $bill = Bill::where('bill_id', $billId)->lockForUpdate()->first();
-        if (! $bill || in_array($bill->payment_status, ['Paid', 'Waived'], true)) {
+        $bill = Bill::where('bill_id', $billId)->first();
+
+        if (! $bill) {
             return;
         }
 
-        // Prefer settled status when a paid event exists.
-        $successfulPayment = Payment::where('bill_id', $billId)
-            ->where('provider_status', 'paid')
-            ->latest('paid_at')
-            ->first();
-
-        if ($successfulPayment && $bill->payment_status !== 'Paid') {
-            $bill->update([
-                'payment_status' => 'Paid',
-                'version' => $bill->version + 1,
-            ]);
-            \Log::info('Bill marked as Paid via payment check', ['billId' => $bill->bill_id]);
-
-            return;
-        }
-
-        $pendingPayment = Payment::where('bill_id', $billId)
-            ->where('provider_status', 'pending')
-            ->where(function ($query) {
-                $query->whereNull('checkout_expires_at')
-                    ->orWhere('checkout_expires_at', '>', now());
-            })
-            ->exists();
-
-        $nextStatus = $pendingPayment ? 'Pending' : $this->resolveUnsettledBillStatus($bill);
-
-        if ($bill->payment_status !== $nextStatus) {
-            $bill->update([
-                'payment_status' => $nextStatus,
-                'version' => $bill->version + 1,
-            ]);
-
-            \Log::info('Bill status reconciled from payment state', [
-                'billId' => $bill->bill_id,
-                'status' => $nextStatus,
-            ]);
-        }
-    }
-
-    private function resolveUnsettledBillStatus(Bill $bill): string
-    {
-        if ($bill->due_date && $bill->due_date->isPast()) {
-            return 'Overdue';
-        }
-
-        return 'Unpaid';
+        $bill->reconcilePaymentStatus();
     }
 
     private function normalizeProviderStatus(string $eventType, ?string $resourceStatus): string
@@ -371,51 +447,45 @@ class BillingController extends Controller
         $event = Str::lower($eventType);
         $status = Str::lower((string) $resourceStatus);
 
-        // Success indicators
-        if ($status === 'paid' || 
-            $status === 'succeeded' || 
-            $status === 'completed' ||
-            $status === 'approved' ||
-            $status === 'authorized' ||
-            $status === 'authorised' ||
-            $status === 'authorizedd' ||
-            Str::contains($event, 'paid') || 
-            Str::contains($event, 'succeeded') ||
-            Str::contains($event, 'completed') ||
-            Str::contains($event, 'approved') ||
-            Str::contains($event, 'authorized') ||
-            Str::contains($event, 'authorised') ||
-            Str::contains($event, 'success')
-        ) {
+        if (in_array($status, self::PROVIDER_SUCCESS_STATUSES, true)) {
             return 'paid';
         }
 
-        // Failure indicators
-        if (in_array($status, ['failed', 'canceled', 'cancelled', 'declined'], true) || 
-            Str::contains($event, 'failed') ||
-            Str::contains($event, 'declined')
-        ) {
+        if (in_array($status, self::PROVIDER_FAILURE_STATUSES, true)) {
             return 'failed';
         }
 
-        // Expiration indicators
         if ($status === 'expired' || Str::contains($event, 'expired')) {
             return 'expired';
+        }
+
+        // Fallback from event naming when resource status is sparse.
+        if (Str::contains($event, ['paid', 'succeeded', 'completed'])) {
+            return 'paid';
+        }
+
+        if (Str::contains($event, ['failed', 'declined', 'cancelled', 'canceled'])) {
+            return 'failed';
         }
 
         return 'pending';
     }
 
-    public function paymentStatus(Request $request, Bill $bill): JsonResponse
+    public function paymentStatus(Request $request, Bill $bill, PayMongoService $payMongo): JsonResponse
     {
         if ($bill->leaseContract->tenant_id !== $request->user()->user_id) {
             abort(403);
         }
 
+        /** @var Payment|null $latestPayment */
         $latestPayment = $bill->payments()->latest('payment_date')->first();
 
-        if (!$latestPayment) {
+        if (! $latestPayment) {
             return response()->json(['status' => 'unpaid', 'payment' => null]);
+        }
+
+        if ($latestPayment->provider === 'paymongo' && in_array($latestPayment->provider_status, self::PROVIDER_PENDING_STATUSES, true)) {
+            $latestPayment = $this->refreshPaymentFromCheckoutSession($latestPayment, $payMongo);
         }
 
         return response()->json([
@@ -431,5 +501,75 @@ class BillingController extends Controller
                 'failure_message' => $latestPayment->failure_message,
             ],
         ]);
+    }
+
+    private function refreshPaymentFromCheckoutSession(Payment $payment, PayMongoService $payMongo): Payment
+    {
+        if (blank(config('services.paymongo.secret_key')) || blank($payment->provider_checkout_session_id)) {
+            return $payment;
+        }
+
+        try {
+            $session = $payMongo->retrieveCheckoutSession((string) $payment->provider_checkout_session_id);
+            $details = $payMongo->extractCheckoutDetails($session);
+            $normalized = $this->normalizeProviderStatus('checkout_session.sync', $payMongo->extractCheckoutStatus($session));
+
+            DB::transaction(function () use ($payment, $details, $session, $normalized): void {
+                /** @var Payment|null $locked */
+                $locked = Payment::where('payment_id', $payment->payment_id)->lockForUpdate()->first();
+
+                if (! $locked) {
+                    return;
+                }
+
+                $update = [
+                    'provider_status' => $normalized,
+                    'provider_payment_intent_id' => $details['payment_intent_id'] ?: $locked->provider_payment_intent_id,
+                    'provider_metadata' => $session,
+                ];
+
+                if (! blank($details['expires_at'])) {
+                    $update['checkout_expires_at'] = $details['expires_at'];
+                }
+
+                if ($normalized === 'paid' && $locked->paid_at === null) {
+                    $update['paid_at'] = now();
+                    $update['payment_date'] = now();
+                    $update['failure_message'] = null;
+                }
+
+                if ($normalized === 'failed' || $normalized === 'expired') {
+                    $update['failure_message'] = $normalized === 'expired'
+                        ? 'Checkout session expired.'
+                        : 'Payment failed via PayMongo.';
+                }
+
+                $locked->update($update);
+                $this->updateBillStatusIfNeeded($locked->bill_id);
+            });
+
+            return $payment->fresh() ?? $payment;
+        } catch (\Throwable $e) {
+            Log::warning('Unable to refresh payment from PayMongo checkout session.', [
+                'payment_id' => $payment->payment_id,
+                'checkout_session_id' => $payment->provider_checkout_session_id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return $payment;
+        }
+    }
+
+    private function extractCheckoutSessionIdFromUrl(string $checkoutUrl): ?string
+    {
+        $path = (string) parse_url($checkoutUrl, PHP_URL_PATH);
+
+        if ($path === '') {
+            return null;
+        }
+
+        $segments = array_values(array_filter(explode('/', trim($path, '/'))));
+
+        return $segments !== [] ? (string) end($segments) : null;
     }
 }

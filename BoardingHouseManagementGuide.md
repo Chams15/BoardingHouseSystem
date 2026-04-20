@@ -67,6 +67,7 @@ management of spare parts and external contractor payroll.
 ● Log complaints, categorize them, and assign them for resolution.
 ● Track the progress and status of maintenance activities.
 ● Generate reports of recurring issues to help improve facility upkeep.
+
 E. Security & Access Control Subsystem
 Paper-based visitor logbooks are a security vulnerability; they are easily damaged,
 illegible, and impossible to search quickly during an investigation. Furthermore, enforcing a

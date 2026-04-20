@@ -15,7 +15,7 @@ class AuditLogController extends Controller
     public function index(): Response
     {
         $logs = AuditLog::with('actor')
-            ->orderByDesc('log_id')
+            ->orderByDesc('audit_log_id')
             ->paginate(30)
             ->withQueryString();
 
@@ -30,7 +30,7 @@ class AuditLogController extends Controller
             return back()->with('error', 'Only created, updated, or deleted events can be rolled back.');
         }
 
-        $alreadyRolledBack = AuditLog::where('rollback_of_log_id', $auditLog->log_id)->exists();
+        $alreadyRolledBack = AuditLog::where('rollback_of_audit_log_id', $auditLog->audit_log_id)->exists();
         if ($alreadyRolledBack) {
             return back()->with('error', 'This change has already been rolled back.');
         }
@@ -70,7 +70,7 @@ class AuditLogController extends Controller
                     'old_values' => $auditLog->new_values,
                     'new_values' => $auditLog->old_values,
                     'action_meta' => ['rolled_back_event' => $auditLog->event_type],
-                    'rollback_of_log_id' => $auditLog->log_id,
+                    'rollback_of_audit_log_id' => $auditLog->audit_log_id,
                 ]);
             });
         } catch (\Throwable $e) {
