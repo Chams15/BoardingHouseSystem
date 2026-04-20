@@ -39,6 +39,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 export default function MaintenanceIndex({ tickets, activeContract }: Props) {
     const { props } = usePage();
     const flash = props.flash as { success?: string; error?: string } | undefined;
+    const errors = (props.errors ?? {}) as Record<string, string | undefined>;
 
     const [issueDesc, setIssueDesc] = useState('');
     const [priority, setPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
@@ -94,6 +95,7 @@ export default function MaintenanceIndex({ tickets, activeContract }: Props) {
                             className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400 dark:border-neutral-700 dark:bg-neutral-950 dark:text-gray-100"
                             placeholder="Ex: Faucet in CR is leaking continuously."
                         />
+                        {errors.issue_desc && <p className="mt-1 text-xs text-red-600">{errors.issue_desc}</p>}
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
@@ -111,6 +113,7 @@ export default function MaintenanceIndex({ tickets, activeContract }: Props) {
                                 <option value="Medium">Medium</option>
                                 <option value="High">High</option>
                             </select>
+                            {errors.priority && <p className="mt-1 text-xs text-red-600">{errors.priority}</p>}
                         </div>
 
                         <div>
@@ -128,10 +131,12 @@ export default function MaintenanceIndex({ tickets, activeContract }: Props) {
                         <input
                             id="issue_photo"
                             type="file"
-                            accept="image/png,image/jpeg,image/webp"
+                            accept="image/png,image/jpeg,.jpg,.jpeg,.png"
                             onChange={(e) => setIssuePhoto(e.target.files?.[0] ?? null)}
                             className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 file:mr-4 file:rounded-md file:border-0 file:bg-orange-100 file:px-3 file:py-1 file:text-orange-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-gray-100"
                         />
+                        <p className="mt-1 text-xs text-gray-500">Allowed: JPG, JPEG, PNG. Max size: 10MB.</p>
+                        {errors.issue_photo && <p className="mt-1 text-xs text-red-600">{errors.issue_photo}</p>}
                     </div>
 
                     <Button type="submit" className="bg-orange-500 text-white hover:bg-orange-600">

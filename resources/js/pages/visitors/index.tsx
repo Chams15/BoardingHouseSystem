@@ -26,6 +26,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 export default function VisitorsIndex({ visitorLogs }: Props) {
     const { props } = usePage();
     const flash = props.flash as { success?: string; error?: string } | undefined;
+    const errors = (props.errors ?? {}) as Record<string, string | undefined>;
 
     const [visitorName, setVisitorName] = useState('');
     const [purpose, setPurpose] = useState('');
@@ -74,6 +75,7 @@ export default function VisitorsIndex({ visitorLogs }: Props) {
                             required
                             className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-gray-100"
                         />
+                        {errors.visitor_name && <p className="mt-1 text-xs text-red-600">{errors.visitor_name}</p>}
                     </div>
 
                     <div>
@@ -86,6 +88,7 @@ export default function VisitorsIndex({ visitorLogs }: Props) {
                             onChange={(e) => setPurpose(e.target.value)}
                             className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-gray-100"
                         />
+                        {errors.purpose && <p className="mt-1 text-xs text-red-600">{errors.purpose}</p>}
                     </div>
 
                     <div>
@@ -95,10 +98,12 @@ export default function VisitorsIndex({ visitorLogs }: Props) {
                         <input
                             id="visitor_photo"
                             type="file"
-                            accept="image/png,image/jpeg,image/webp"
+                            accept="image/png,image/jpeg,.jpg,.jpeg,.png"
                             onChange={(e) => setVisitorPhoto(e.target.files?.[0] ?? null)}
                             className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 file:mr-4 file:rounded-md file:border-0 file:bg-orange-100 file:px-3 file:py-1 file:text-orange-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-gray-100"
                         />
+                        <p className="mt-1 text-xs text-gray-500">Allowed: JPG, JPEG, PNG. Max size: 10MB.</p>
+                        {errors.visitor_photo && <p className="mt-1 text-xs text-red-600">{errors.visitor_photo}</p>}
                     </div>
 
                     <Button type="submit" className="bg-orange-500 text-white hover:bg-orange-600">

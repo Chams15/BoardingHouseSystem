@@ -39,7 +39,11 @@ class TenantVisitorController extends Controller
         $validated = $request->validate([
             'visitor_name' => ['required', 'string', 'max:100'],
             'purpose' => ['nullable', 'string', 'max:255'],
-            'visitor_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'visitor_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
+        ], [
+            'visitor_photo.uploaded' => 'Visitor photo failed to upload. Please try a smaller file (up to 10MB) or check server upload limits.',
+            'visitor_photo.max' => 'Visitor photo must not be greater than 10MB.',
+            'visitor_photo.mimes' => 'Visitor photo must be a JPG or PNG image.',
         ]);
 
         $photoPath = $request->file('visitor_photo')?->store('visitors', 'public');

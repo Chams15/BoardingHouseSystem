@@ -512,7 +512,22 @@ class BillingController extends Controller
         try {
             $session = $payMongo->retrieveCheckoutSession((string) $payment->provider_checkout_session_id);
             $details = $payMongo->extractCheckoutDetails($session);
-            $normalized = $this->normalizeProviderStatus('checkout_session.sync', $payMongo->extractCheckoutStatus($session));
+
+            $derivedStatus = $payMongo->extractCheckoutStatus($session);
+            $paymentIntentStatus = Str::lower((string) Arr::get($session, 'data.attributes.payment_intent.attributes.status'));
+            $hasPaidPayment = collect(Arr::get($session, 'data.attributes.payments', []))->contains(function ($pay): bool {
+                return Str::lower((string) Arr::get($pay, 'attributes.status')) === 'paid';
+            });
+
+            if ($hasPaidPayment) {
+                $derivedStatus = 'paid';
+            } elseif (blank($derivedStatus) && $paymentIntentStatus !== '') {
+                $derivedStatus = $paymentIntentStatus;
+            } elseif (Str::lower((string) $derivedStatus) === 'active' && in_array($paymentIntentStatus, ['paid', 'succeeded'], true)) {
+                $derivedStatus = $paymentIntentStatus;
+            }
+
+            $normalized = $this->normalizeProviderStatus('checkout_session.sync', $derivedStatus);
 
             DB::transaction(function () use ($payment, $details, $session, $normalized): void {
                 /** @var Payment|null $locked */

@@ -51,7 +51,11 @@ class MaintenanceController extends Controller
             'issue_desc' => ['required', 'string', 'max:5000'],
             'priority' => ['required', 'in:Low,Medium,High'],
             'room_id' => ['nullable', 'integer', 'exists:rooms,room_id'],
-            'issue_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'issue_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
+        ], [
+            'issue_photo.uploaded' => 'Issue photo failed to upload. Please try a smaller file (up to 10MB) or check server upload limits.',
+            'issue_photo.max' => 'Issue photo must not be greater than 10MB.',
+            'issue_photo.mimes' => 'Issue photo must be a JPG or PNG image.',
         ]);
 
         $photoPath = $request->file('issue_photo')?->store('maintenance', 'public');

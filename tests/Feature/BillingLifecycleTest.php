@@ -392,6 +392,81 @@ class BillingLifecycleTest extends TestCase
         $this->assertSame('Paid', $bill->payment_status);
     }
 
+    public function test_payment_status_sync_marks_payment_paid_when_checkout_is_active_but_intent_succeeded(): void
+    {
+        config()->set('services.paymongo.secret_key', 'sk_test_123');
+
+        [$tenant, $bill] = $this->createTenantAndBill(now()->addDays(5)->toDateString(), 'Pending');
+
+        $payment = Payment::create([
+            'bill_id' => $bill->bill_id,
+            'amount_paid' => $bill->amount_due,
+            'payment_method' => 'Online',
+            'provider' => 'paymongo',
+            'provider_status' => 'pending',
+            'provider_checkout_session_id' => 'cs_sync_001',
+            'provider_payment_intent_id' => 'pi_sync_001',
+            'payment_date' => now()->subMinute(),
+            'reference_no' => 'REF-SYNC-001',
+        ]);
+
+        $this->mock(PayMongoService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('retrieveCheckoutSession')
+                ->once()
+                ->with('cs_sync_001')
+                ->andReturn([
+                    'data' => [
+                        'id' => 'cs_sync_001',
+                        'attributes' => [
+                            'status' => 'active',
+                            'checkout_url' => 'https://checkout.test/session/cs_sync_001',
+                            'payments' => [
+                                [
+                                    'attributes' => [
+                                        'status' => 'paid',
+                                    ],
+                                ],
+                            ],
+                            'payment_intent' => [
+                                'id' => 'pi_sync_001',
+                                'attributes' => [
+                                    'status' => 'succeeded',
+                                ],
+                            ],
+                        ],
+                    ],
+                ]);
+
+            $mock->shouldReceive('extractCheckoutDetails')
+                ->once()
+                ->andReturn([
+                    'checkout_session_id' => 'cs_sync_001',
+                    'checkout_url' => 'https://checkout.test/session/cs_sync_001',
+                    'payment_intent_id' => 'pi_sync_001',
+                    'reference_no' => null,
+                    'expires_at' => null,
+                ]);
+
+            $mock->shouldReceive('extractCheckoutStatus')
+                ->once()
+                ->andReturn('active');
+        });
+
+        $this->actingAs($tenant)
+            ->getJson(route('billing.payment-status', $bill))
+            ->assertOk()
+            ->assertJsonPath('status', 'paid')
+            ->assertJsonPath('payment.payment_id', $payment->payment_id)
+            ->assertJsonPath('payment.provider_status', 'paid');
+
+        $payment->refresh();
+        $bill->refresh();
+
+        $this->assertSame('paid', $payment->provider_status);
+        $this->assertNotNull($payment->paid_at);
+        $this->assertSame('Paid', $bill->payment_status);
+    }
+
     /**
      * @return array{0: User, 1: Bill}
      */
