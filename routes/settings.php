@@ -17,6 +17,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('settings/password', [PasswordController::class, 'edit'])->name('user-password.edit');
 
+    Route::inertia('settings/verification', 'settings/verification')->name('verification.edit');
+
     Route::put('settings/password', [PasswordController::class, 'update'])
         ->middleware('throttle:6,1')
         ->name('user-password.update');

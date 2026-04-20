@@ -4,6 +4,7 @@ use App\Http\Controllers\BillingController;
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\TenantVisitorController;
+use App\Http\Controllers\VerificationController;
 use App\Http\Middleware\EnsureTenantHasRoom;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
@@ -112,6 +113,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('rooms/{room}/request', [RoomController::class, 'requestRoom'])->name('rooms.request');
     Route::delete('rooms/requests/{roomRequest}/cancel', [RoomController::class, 'cancelRequest'])->name('rooms.request.cancel');
     Route::post('rooms/move-out', [RoomController::class, 'requestMoveOut'])->name('rooms.move-out');
+    Route::get('verification', [VerificationController::class, 'index'])->name('verification.index');
+    Route::post('verification', [VerificationController::class, 'store'])->name('verification.store');
     Route::get('billing/{bill}/paymongo/return', [BillingController::class, 'returnFromCheckout'])->name('billing.paymongo.return');
     Route::post('billing/{bill}/pay', [BillingController::class, 'pay'])->name('billing.pay');
     Route::get('billing/{bill}/payment-status', [BillingController::class, 'paymentStatus'])->name('billing.payment-status');

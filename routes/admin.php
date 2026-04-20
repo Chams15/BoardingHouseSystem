@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\RoomManagementController;
 use App\Http\Controllers\Admin\SecurityController;
 use App\Http\Controllers\Admin\TenantController;
+use App\Http\Controllers\Admin\VerificationRequestController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\Route;
 
@@ -22,6 +23,10 @@ Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])
         Route::get('tenants/{tenant}/edit', [TenantController::class, 'edit'])->name('tenants.edit');
         Route::put('tenants/{tenant}', [TenantController::class, 'update'])->name('tenants.update');
         Route::delete('tenants/{tenant}', [TenantController::class, 'destroy'])->name('tenants.destroy');
+
+        Route::get('verification-requests', [VerificationRequestController::class, 'index'])->name('verification-requests.index');
+        Route::post('verification-requests/{tenantProfile}/approve', [VerificationRequestController::class, 'approve'])->name('verification-requests.approve');
+        Route::post('verification-requests/{tenantProfile}/reject', [VerificationRequestController::class, 'reject'])->name('verification-requests.reject');
 
         Route::get('rooms', [RoomManagementController::class, 'index'])->name('rooms.index');
         Route::get('rooms/create', [RoomManagementController::class, 'createRoom'])->name('rooms.create');

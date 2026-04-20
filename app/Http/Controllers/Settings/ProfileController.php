@@ -43,7 +43,7 @@ class ProfileController extends Controller
         $user->save();
 
         // Update tenant profile fields
-        $profileData = collect($validated)->only(['full_name', 'contact_number', 'emergency_contact'])->toArray();
+        $profileData = collect($validated)->only(['full_name', 'contact_number', 'contact_address', 'emergency_contact'])->toArray();
         if (!empty($profileData)) {
             $user->tenantProfile()->updateOrCreate(
                 ['user_id' => $user->user_id],

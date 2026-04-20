@@ -76,4 +76,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(VisitorLog::class, 'tenant_visited', 'user_id');
     }
+
+    public function verifiedTenantProfiles(): HasMany
+    {
+        return $this->hasMany(TenantProfile::class, 'verified_by', 'user_id');
+    }
 }

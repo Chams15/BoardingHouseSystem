@@ -37,14 +37,16 @@ type Room = {
     capacity: number;
     status: 'Available' | 'Occupied' | 'Maintenance';
     amenities: string | null;
+    room_image_url?: string | null;
     lease_contracts: LeaseContract[];
 };
 
 type Props = {
     room: Room;
+    room_image_url: string | null;
 };
 
-export default function EditRoom({ room }: Props) {
+export default function EditRoom({ room, room_image_url }: Props) {
     const { props } = usePage();
     const flash = props.flash as { success?: string; error?: string } | undefined;
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -114,7 +116,7 @@ export default function EditRoom({ room }: Props) {
                     {/* Room Form */}
                     <div>
                         <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Room Details</h2>
-                        <RoomForm room={room} onCancel={() => window.location.href = '/admin/rooms'} />
+                        <RoomForm room={room} roomImageUrl={room_image_url} onCancel={() => window.location.href = '/admin/rooms'} />
                     </div>
 
                     {/* Lease Management */}

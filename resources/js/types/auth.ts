@@ -11,8 +11,14 @@ export type User = {
         profile_id: number;
         full_name: string;
         contact_number: string;
+        contact_address?: string | null;
         id_doc_url: string | null;
         emergency_contact: string | null;
+        verification_status?: 'Not_Submitted' | 'Pending' | 'Approved' | 'Rejected';
+        verification_note?: string | null;
+        verification_submitted_at?: string | null;
+        verified_at?: string | null;
+        verified_by?: number | null;
     };
     [key: string]: unknown;
 };

@@ -7,7 +7,9 @@ use App\Models\LeaseContract;
 use App\Models\Room;
 use App\Models\RoomRequest;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,7 +20,21 @@ class RoomManagementController extends Controller
         $rooms = Room::with(['leaseContracts' => function ($q) {
             $q->whereIn('contract_status', ['Active', 'Pending_MoveOut'])->with('tenant.tenantProfile');
         }])->withCount(['roomRequests' => fn ($q) => $q->where('status', 'Pending')])
-          ->get();
+          ->get()
+          ->map(function (Room $room): array {
+              return [
+                  'room_id' => $room->room_id,
+                  'room_number' => $room->room_number,
+                  'category' => $room->category,
+                  'price_monthly' => $room->price_monthly,
+                  'capacity' => $room->capacity,
+                  'status' => $room->status,
+                  'amenities' => $room->amenities,
+                  'room_image_url' => $room->room_image_path ? Storage::url($room->room_image_path) : null,
+                  'lease_contracts' => $room->leaseContracts,
+                  'room_requests_count' => $room->room_requests_count,
+              ];
+          });
 
         return Inertia::render('admin/rooms/index', [
             'rooms' => $rooms,
@@ -100,7 +116,7 @@ class RoomManagementController extends Controller
     /**
      * Store a new room
      */
-    public function storeRoom(\Illuminate\Http\Request $request): RedirectResponse
+    public function storeRoom(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'room_number' => 'required|string|unique:rooms,room_number',
@@ -109,9 +125,15 @@ class RoomManagementController extends Controller
             'capacity' => 'required|integer|min:1',
             'status' => 'required|in:Available,Occupied,Maintenance',
             'amenities' => 'nullable|string',
+            'room_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
         ]);
 
-        Room::create($validated);
+        $roomImagePath = $request->file('room_image')?->store('rooms', 'public');
+
+        Room::create([
+            ...$validated,
+            'room_image_path' => $roomImagePath,
+        ]);
 
         return redirect()->route('admin.rooms.index')
             ->with('success', 'Room created successfully.');
@@ -128,13 +150,14 @@ class RoomManagementController extends Controller
                     $q->with(['tenant.tenantProfile'])->orderBy('created_at', 'desc');
                 }
             ]),
+            'room_image_url' => $room->room_image_path ? Storage::url($room->room_image_path) : null,
         ]);
     }
 
     /**
      * Update a room
      */
-    public function updateRoom(\Illuminate\Http\Request $request, Room $room): RedirectResponse
+    public function updateRoom(Request $request, Room $room): RedirectResponse
     {
         $validated = $request->validate([
             'room_number' => 'required|string|unique:rooms,room_number,' . $room->room_id . ',room_id',
@@ -143,9 +166,23 @@ class RoomManagementController extends Controller
             'capacity' => 'required|integer|min:1',
             'status' => 'required|in:Available,Occupied,Maintenance',
             'amenities' => 'nullable|string',
+            'room_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
         ]);
 
-        $room->update($validated);
+        $roomImagePath = $room->room_image_path;
+
+        if ($request->hasFile('room_image')) {
+            if ($roomImagePath && Storage::disk('public')->exists($roomImagePath)) {
+                Storage::disk('public')->delete($roomImagePath);
+            }
+
+            $roomImagePath = $request->file('room_image')->store('rooms', 'public');
+        }
+
+        $room->update([
+            ...$validated,
+            'room_image_path' => $roomImagePath,
+        ]);
 
         return redirect()->route('admin.rooms.index')
             ->with('success', 'Room updated successfully.');

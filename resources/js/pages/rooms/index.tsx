@@ -12,6 +12,7 @@ type Room = {
     capacity: number;
     status: 'Available' | 'Occupied' | 'Maintenance';
     amenities: string | null;
+    room_image_url: string | null;
     room_requests_count: number;
 };
 
@@ -19,6 +20,8 @@ type Props = {
     rooms: Room[];
     userPendingRequests: Record<number, number>; // room_id -> request_id
     hasActiveContract: boolean;
+    canRequestRooms: boolean;
+    verificationStatus: 'Not_Submitted' | 'Pending' | 'Approved' | 'Rejected';
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -26,7 +29,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Rooms', href: '/rooms' },
 ];
 
-export default function RoomsIndex({ rooms, userPendingRequests, hasActiveContract }: Props) {
+export default function RoomsIndex({ rooms, userPendingRequests, hasActiveContract, canRequestRooms, verificationStatus }: Props) {
     const { props } = usePage();
     const flash = props.flash as { success?: string; error?: string } | undefined;
 
@@ -56,6 +59,16 @@ export default function RoomsIndex({ rooms, userPendingRequests, hasActiveContra
                     </div>
                 )}
 
+                {!canRequestRooms && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                        Tenant verification is required before requesting a room. Current status: <strong>{verificationStatus}</strong>.{' '}
+                        <a href="/settings/verification" className="underline">
+                            Submit verification
+                        </a>
+                        .
+                    </div>
+                )}
+
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {rooms.map((room) => {
                         const isAvailable = room.status === 'Available';
@@ -66,6 +79,16 @@ export default function RoomsIndex({ rooms, userPendingRequests, hasActiveContra
                                 key={room.room_id}
                                 className="flex flex-col rounded-xl border bg-white shadow-sm dark:bg-neutral-900 dark:border-neutral-800"
                             >
+                                {room.room_image_url ? (
+                                    <a href={room.room_image_url} target="_blank" rel="noreferrer" className="block h-48 overflow-hidden rounded-t-xl">
+                                        <img src={room.room_image_url} alt={`Room ${room.room_number}`} className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.02]" />
+                                    </a>
+                                ) : (
+                                    <div className="flex h-48 items-center justify-center rounded-t-xl bg-gradient-to-br from-orange-100 via-white to-amber-50 text-sm font-medium text-orange-700 dark:from-neutral-800 dark:via-neutral-900 dark:to-neutral-800 dark:text-orange-300">
+                                        Room image coming soon
+                                    </div>
+                                )}
+
                                 <div className="p-5 space-y-3 flex-1">
                                     <div className="flex items-center justify-between">
                                         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -128,6 +151,10 @@ export default function RoomsIndex({ rooms, userPendingRequests, hasActiveContra
                                         ) : hasActiveContract ? (
                                             <Button disabled className="w-full" variant="outline">
                                                 Already Assigned a Room
+                                            </Button>
+                                        ) : !canRequestRooms ? (
+                                            <Button disabled className="w-full" variant="outline">
+                                                Verification Required
                                             </Button>
                                         ) : (
                                             <Button

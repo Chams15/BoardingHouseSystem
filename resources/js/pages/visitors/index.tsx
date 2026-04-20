@@ -9,6 +9,7 @@ type VisitorLog = {
     log_id: number;
     visitor_name: string;
     visitor_photo_url: string | null;
+    visitor_photo_path?: string | null;
     purpose: string | null;
     time_in: string;
     time_out: string | null;
@@ -133,11 +134,13 @@ export default function VisitorsIndex({ visitorLogs }: Props) {
                                     <tr key={log.log_id} className="hover:bg-gray-50 dark:hover:bg-neutral-800">
                                         <td className="px-4 py-3">
                                             {log.visitor_photo_url ? (
-                                                <img
-                                                    src={log.visitor_photo_url}
-                                                    alt={log.visitor_name}
-                                                    className="h-10 w-10 rounded-md object-cover"
-                                                />
+                                                <a href={log.visitor_photo_url} target="_blank" rel="noreferrer" title="Open visitor photo">
+                                                    <img
+                                                        src={log.visitor_photo_url}
+                                                        alt={log.visitor_name}
+                                                        className="h-10 w-10 rounded-md object-cover transition-transform hover:scale-105"
+                                                    />
+                                                </a>
                                             ) : (
                                                 <div className="h-10 w-10 rounded-md bg-gray-100 dark:bg-neutral-800" />
                                             )}

@@ -16,6 +16,7 @@ class Room extends Model
         'capacity',
         'status',
         'amenities',
+        'room_image_path',
     ];
 
     protected function casts(): array

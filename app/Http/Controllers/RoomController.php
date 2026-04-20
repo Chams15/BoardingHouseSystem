@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\LeaseContract;
 use App\Models\Room;
 use App\Models\RoomRequest;
+use App\Models\TenantProfile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -16,7 +18,20 @@ class RoomController extends Controller
     public function index(Request $request): Response
     {
         $rooms = Room::withCount(['roomRequests' => fn ($q) => $q->where('status', 'Pending')])
-            ->get();
+            ->get()
+            ->map(function (Room $room): array {
+                return [
+                    'room_id' => $room->room_id,
+                    'room_number' => $room->room_number,
+                    'category' => $room->category,
+                    'price_monthly' => $room->price_monthly,
+                    'capacity' => $room->capacity,
+                    'status' => $room->status,
+                    'amenities' => $room->amenities,
+                    'room_image_url' => $room->room_image_path ? Storage::url($room->room_image_path) : null,
+                    'room_requests_count' => $room->room_requests_count,
+                ];
+            });
 
         $user = $request->user();
 
@@ -29,10 +44,15 @@ class RoomController extends Controller
             ->whereIn('contract_status', ['Active', 'Pending_MoveOut'])
             ->exists();
 
+        $verificationStatus = $user->tenantProfile?->verification_status ?? TenantProfile::VERIFICATION_NOT_SUBMITTED;
+        $canRequestRooms = $verificationStatus === TenantProfile::VERIFICATION_APPROVED;
+
         return Inertia::render('rooms/index', [
             'rooms' => $rooms,
             'userPendingRequests' => $userRequests,
             'hasActiveContract' => $hasActiveContract,
+            'canRequestRooms' => $canRequestRooms,
+            'verificationStatus' => $verificationStatus,
         ]);
     }
 
@@ -55,6 +75,12 @@ class RoomController extends Controller
 
             if ($alreadyOccupying) {
                 return back()->with('error', 'You already have an assigned room.');
+            }
+
+            $verificationStatus = $user->tenantProfile?->verification_status ?? TenantProfile::VERIFICATION_NOT_SUBMITTED;
+
+            if ($verificationStatus !== TenantProfile::VERIFICATION_APPROVED) {
+                return back()->with('error', 'Please complete tenant verification before requesting a room.');
             }
 
             $existing = RoomRequest::where('user_id', $user->user_id)

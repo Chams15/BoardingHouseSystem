@@ -17,6 +17,7 @@ type Ticket = {
     ticket_id: number;
     issue_desc: string;
     issue_photo_url: string | null;
+    issue_photo_path?: string | null;
     priority: 'Low' | 'Medium' | 'High';
     status: 'Pending' | 'In Progress' | 'Resolved';
     contractor_notes: string | null;
@@ -162,7 +163,9 @@ export default function AdminMaintenanceIndex({ tickets, recurringByRoom, recurr
                                             <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{ticket.issue_desc}</td>
                                             <td className="px-4 py-3">
                                                 {ticket.issue_photo_url ? (
-                                                    <img src={ticket.issue_photo_url} alt="Issue" className="h-10 w-10 rounded-md object-cover" />
+                                                    <a href={ticket.issue_photo_url} target="_blank" rel="noreferrer" title="Open issue photo">
+                                                        <img src={ticket.issue_photo_url} alt="Issue" className="h-10 w-10 rounded-md object-cover transition-transform hover:scale-105" />
+                                                    </a>
                                                 ) : (
                                                     <div className="h-10 w-10 rounded-md bg-gray-100 dark:bg-neutral-800" />
                                                 )}

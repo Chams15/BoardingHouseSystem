@@ -26,6 +26,7 @@ class SecurityController extends Controller
                     'log_id' => $log->log_id,
                     'visitor_name' => $log->visitor_name,
                     'visitor_photo_url' => $log->visitor_photo_path ? Storage::url($log->visitor_photo_path) : null,
+                    'visitor_photo_path' => $log->visitor_photo_path,
                     'purpose' => $log->purpose,
                     'time_in' => $log->time_in,
                     'time_out' => $log->time_out,

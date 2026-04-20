@@ -18,14 +18,16 @@ type Room = {
     capacity: number;
     status: 'Available' | 'Occupied' | 'Maintenance';
     amenities: string | null;
+    room_image_url?: string | null;
 };
 
 type Props = {
     room?: Room;
+    roomImageUrl?: string | null;
     onCancel?: () => void;
 };
 
-export default function RoomForm({ room, onCancel }: Props) {
+export default function RoomForm({ room, roomImageUrl, onCancel }: Props) {
     const isEdit = !!room;
 
     const { data, setData, post, put, processing, errors } = useForm({
@@ -35,6 +37,7 @@ export default function RoomForm({ room, onCancel }: Props) {
         capacity: room?.capacity ?? '',
         status: room?.status ?? 'Available',
         amenities: room?.amenities ?? '',
+        room_image: null as File | null,
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -42,12 +45,14 @@ export default function RoomForm({ room, onCancel }: Props) {
 
         if (isEdit) {
             put(`/admin/rooms/${room!.room_id}`, {
+                forceFormData: true,
                 onSuccess: () => {
                     // Success message will be shown via flash
                 },
             });
         } else {
             post('/admin/rooms', {
+                forceFormData: true,
                 onSuccess: () => {
                     // Success message will be shown via flash
                 },
@@ -169,6 +174,28 @@ export default function RoomForm({ room, onCancel }: Props) {
                         />
                         {errors.amenities && (
                             <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.amenities}</p>
+                        )}
+                    </div>
+
+                    <div>
+                        <Label htmlFor="room_image" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Room Image (optional)
+                        </Label>
+                        {roomImageUrl && (
+                            <div className="mb-3 overflow-hidden rounded-lg border border-gray-200 dark:border-neutral-700">
+                                <img src={roomImageUrl} alt={`Room ${room?.room_number ?? 'room image'}`} className="h-40 w-full object-cover" />
+                            </div>
+                        )}
+                        <Input
+                            id="room_image"
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp,.jpg,.jpeg,.png,.webp"
+                            onChange={(e) => setData('room_image', e.target.files?.[0] ?? null)}
+                            className="dark:bg-neutral-800 dark:border-neutral-700 dark:text-gray-100"
+                        />
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Allowed: JPG, JPEG, PNG, WEBP. Max size: 10MB.</p>
+                        {errors.room_image && (
+                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.room_image}</p>
                         )}
                     </div>
 

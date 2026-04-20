@@ -20,6 +20,7 @@ trait ProfileValidationRules
             'full_name' => $this->fullNameRules(),
             'email' => $this->emailRules($userId),
             'contact_number' => $this->contactNumberRules(),
+            'contact_address' => ['required', 'string', 'max:255'],
             'emergency_contact' => ['nullable', 'string', 'max:150'],
         ];
     }

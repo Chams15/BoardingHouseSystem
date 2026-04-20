@@ -40,7 +40,7 @@ export default function Profile({
                     <Heading
                         variant="small"
                         title="Profile information"
-                        description="Update your name and email address"
+                        description="Update your name, email address, and contact details"
                     />
 
                     <Form
@@ -108,6 +108,24 @@ export default function Profile({
                                     <InputError
                                         className="mt-2"
                                         message={errors.contact_number}
+                                    />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="contact_address">Contact Address</Label>
+
+                                    <Input
+                                        id="contact_address"
+                                        className="mt-1 block w-full"
+                                        defaultValue={auth.user.tenant_profile?.contact_address ?? ''}
+                                        name="contact_address"
+                                        required
+                                        placeholder="House no., street, barangay, city"
+                                    />
+
+                                    <InputError
+                                        className="mt-2"
+                                        message={errors.contact_address}
                                     />
                                 </div>
 

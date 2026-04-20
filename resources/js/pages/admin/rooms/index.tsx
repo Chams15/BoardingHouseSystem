@@ -26,6 +26,7 @@ type Room = {
     capacity: number;
     status: 'Available' | 'Occupied' | 'Maintenance';
     amenities: string | null;
+    room_image_url: string | null;
     lease_contracts: LeaseContract[];
     room_requests_count: number;
 };
@@ -92,6 +93,7 @@ export default function AdminRoomsIndex({ rooms }: Props) {
                     <table className="w-full text-left text-sm">
                         <thead className="border-b bg-gray-50 dark:bg-neutral-800 dark:border-neutral-700 text-gray-600 dark:text-gray-400">
                             <tr>
+                                <th className="px-4 py-3 font-medium">Image</th>
                                 <th className="px-4 py-3 font-medium">Room</th>
                                 <th className="px-4 py-3 font-medium">Category</th>
                                 <th className="px-4 py-3 font-medium">Price</th>
@@ -110,6 +112,21 @@ export default function AdminRoomsIndex({ rooms }: Props) {
 
                                 return (
                                     <tr key={room.room_id} className="hover:bg-gray-50 dark:hover:bg-neutral-800">
+                                        <td className="px-4 py-3">
+                                            {room.room_image_url ? (
+                                                <a href={room.room_image_url} target="_blank" rel="noreferrer">
+                                                    <img
+                                                        src={room.room_image_url}
+                                                        alt={`Room ${room.room_number}`}
+                                                        className="h-12 w-16 rounded-md object-cover"
+                                                    />
+                                                </a>
+                                            ) : (
+                                                <div className="flex h-12 w-16 items-center justify-center rounded-md bg-gray-100 text-xs text-gray-400 dark:bg-neutral-800">
+                                                    No image
+                                                </div>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
                                             {room.room_number}
                                         </td>

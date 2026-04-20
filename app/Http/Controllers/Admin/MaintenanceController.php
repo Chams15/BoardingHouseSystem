@@ -31,6 +31,7 @@ class MaintenanceController extends Controller
                 'ticket_id' => $ticket->ticket_id,
                 'issue_desc' => $ticket->issue_desc,
                 'issue_photo_url' => $ticket->issue_photo_path ? Storage::url($ticket->issue_photo_path) : null,
+                'issue_photo_path' => $ticket->issue_photo_path,
                 'priority' => $ticket->priority,
                 'status' => $ticket->status,
                 'contractor_notes' => $ticket->contractor_notes,
