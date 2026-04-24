@@ -41,6 +41,7 @@ export default function Login({
                             <div className="grid gap-2">
                                 <Label htmlFor="email">Email address</Label>
                                 <Input
+                                    className="border-orange-100 bg-white/90 focus-visible:ring-orange-500/30 dark:border-neutral-700 dark:bg-neutral-900/90"
                                     id="email"
                                     type="email"
                                     name="email"
@@ -56,6 +57,7 @@ export default function Login({
                             <div className="grid gap-2">
                                 <Label htmlFor="password">Password</Label>
                                 <PasswordInput
+                                    className="border-orange-100 bg-white/90 focus-visible:ring-orange-500/30 dark:border-neutral-700 dark:bg-neutral-900/90"
                                     id="password"
                                     name="password"
                                     required
@@ -88,7 +90,7 @@ export default function Login({
 
                             <Button
                                 type="submit"
-                                className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white"
+                                className="mt-4 w-full bg-orange-500 text-white shadow-lg shadow-orange-500/30 transition hover:-translate-y-0.5 hover:bg-orange-600"
                                 tabIndex={4}
                                 disabled={processing}
                                 data-test="login-button"

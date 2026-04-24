@@ -265,11 +265,7 @@ export default function Dashboard({ activeContract, currentBill, paymentHistory,
                                             </p>
                                         </div>
 
-                                        <div className="bg-blue-50 rounded-lg p-3 dark:bg-neutral-800">
-                                            <p className="text-xs text-blue-600 dark:text-blue-400">
-                                                💡 Pay on time to avoid overdue charges
-                                            </p>
-                                        </div>
+                                        
                                     </div>
 
                                     <div className="border-t border-gray-100 p-6 dark:border-neutral-800">

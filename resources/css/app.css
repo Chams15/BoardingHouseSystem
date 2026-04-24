@@ -156,3 +156,131 @@
         @apply bg-background text-foreground;
     }
 }
+
+@layer components {
+    .landing-shell {
+        background-image:
+            radial-gradient(circle at 12% 8%, rgba(249, 115, 22, 0.12), transparent 30%),
+            radial-gradient(circle at 85% 14%, rgba(251, 146, 60, 0.1), transparent 26%);
+    }
+
+    .landing-hero {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .landing-hero::before {
+        content: '';
+        position: absolute;
+        width: 28rem;
+        height: 28rem;
+        border-radius: 9999px;
+        right: -10rem;
+        top: -12rem;
+        background: radial-gradient(circle, rgba(251, 146, 60, 0.2), transparent 65%);
+        filter: blur(2px);
+        animation: drift 16s ease-in-out infinite;
+        pointer-events: none;
+    }
+
+    .landing-rise {
+        animation: riseIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    .landing-card {
+        animation: riseIn 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        transition: transform 0.35s ease, box-shadow 0.35s ease;
+    }
+
+    .landing-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 20px 35px -20px rgba(249, 115, 22, 0.45);
+    }
+
+    .landing-card-delay-1 {
+        animation-delay: 90ms;
+    }
+
+    .landing-card-delay-2 {
+        animation-delay: 180ms;
+    }
+
+    .landing-card-delay-3 {
+        animation-delay: 270ms;
+    }
+
+    .auth-canvas::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 35%),
+            repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.06) 0px, rgba(255, 255, 255, 0.06) 1px, transparent 1px, transparent 20px);
+        opacity: 0.7;
+        pointer-events: none;
+    }
+
+    .auth-orb {
+        position: absolute;
+        border-radius: 9999px;
+        filter: blur(2px);
+        pointer-events: none;
+        animation: drift 14s ease-in-out infinite;
+    }
+
+    .auth-orb-lg {
+        width: 19rem;
+        height: 19rem;
+        left: -4.5rem;
+        top: -5rem;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0));
+    }
+
+    .auth-orb-sm {
+        width: 13rem;
+        height: 13rem;
+        right: -2.8rem;
+        bottom: -4.5rem;
+        background: radial-gradient(circle, rgba(253, 186, 116, 0.4), rgba(249, 115, 22, 0));
+        animation-delay: -4.5s;
+    }
+
+    .auth-rise {
+        animation: riseIn 0.7s ease-out both;
+    }
+}
+
+@keyframes riseIn {
+    from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes drift {
+    0%,
+    100% {
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+        transform: translate3d(-10px, 12px, 0) scale(1.04);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .landing-rise,
+    .landing-card,
+    .auth-rise,
+    .auth-orb,
+    .landing-hero::before {
+        animation: none !important;
+    }
+
+    .landing-card,
+    .landing-card:hover {
+        transform: none;
+    }
+}

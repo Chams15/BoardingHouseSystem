@@ -8,13 +8,14 @@ export default function Welcome({
     canRegister?: boolean;
 }) {
     const { auth } = usePage().props;
+    const roomImage = '/storage/rooms/8V5DgqQhQFocVOdDouFLUE4t0SQv2FMKIK9Bmhc2.jpg';
 
     return (
         <>
             <Head title="Welcome" />
-            <div className="flex min-h-screen flex-col bg-white text-gray-800 dark:bg-neutral-950 dark:text-gray-200">
+            <div className="landing-shell flex min-h-screen flex-col bg-white text-gray-800 dark:bg-neutral-950 dark:text-gray-200">
                 {/* Header */}
-                <header className="w-full border-b border-orange-100 bg-white px-6 py-4 dark:border-neutral-800 dark:bg-neutral-900">
+                <header className="w-full border-b border-orange-100/80 bg-white/90 px-6 py-4 backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/90">
                     <div className="mx-auto flex max-w-6xl items-center justify-between">
                         <Link href="/" className="flex items-center gap-2">
                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500">
@@ -55,20 +56,20 @@ export default function Welcome({
                 </header>
 
                 {/* Hero Section */}
-                <section className="bg-gradient-to-br from-orange-50 to-white px-6 py-20 dark:from-neutral-900 dark:to-neutral-950 lg:py-32">
+                <section className="landing-hero bg-gradient-to-br from-orange-50 to-white px-6 py-20 dark:from-neutral-900 dark:to-neutral-950 lg:py-32">
                     <div className="mx-auto max-w-6xl text-center">
-                        <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-5xl lg:text-6xl">
+                        <h1 className="landing-rise text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-5xl lg:text-6xl">
                             Find Your Perfect
                             <span className="text-orange-500"> Boarding House</span>
                         </h1>
-                        <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600 dark:text-gray-300">
+                        <p className="landing-rise mx-auto mt-6 max-w-2xl text-lg text-gray-600 [animation-delay:120ms] dark:text-gray-300">
                             Comfortable, affordable, and conveniently located rooms for students and professionals.
                             Your home away from home starts here.
                         </p>
-                        <div className="mt-10 flex items-center justify-center gap-4">
+                        <div className="landing-rise mt-10 flex items-center justify-center gap-4 [animation-delay:220ms]">
                             <Link
                                 href={canRegister ? register() : login()}
-                                className="rounded-lg bg-orange-500 px-8 py-3 text-base font-semibold text-white shadow-md transition hover:bg-orange-600"
+                                className="rounded-lg bg-orange-500 px-8 py-3 text-base font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:bg-orange-600"
                             >
                                 Get Started
                             </Link>
@@ -94,7 +95,7 @@ export default function Welcome({
 
                         <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
                             {/* Feature 1 */}
-                            <div className="rounded-xl border border-orange-100 bg-orange-50 p-8 text-center dark:border-neutral-800 dark:bg-neutral-900">
+                            <div className="landing-card landing-card-delay-1 rounded-xl border border-orange-100 bg-orange-50 p-8 text-center dark:border-neutral-800 dark:bg-neutral-900">
                                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-orange-500 text-white">
                                     <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 10.5L12 3l9 7.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1V10.5z" />
@@ -108,7 +109,7 @@ export default function Welcome({
                             </div>
 
                             {/* Feature 2 */}
-                            <div className="rounded-xl border border-orange-100 bg-orange-50 p-8 text-center dark:border-neutral-800 dark:bg-neutral-900">
+                            <div className="landing-card landing-card-delay-2 rounded-xl border border-orange-100 bg-orange-50 p-8 text-center dark:border-neutral-800 dark:bg-neutral-900">
                                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-orange-500 text-white">
                                     <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
@@ -121,7 +122,7 @@ export default function Welcome({
                             </div>
 
                             {/* Feature 3 */}
-                            <div className="rounded-xl border border-orange-100 bg-orange-50 p-8 text-center dark:border-neutral-800 dark:bg-neutral-900">
+                            <div className="landing-card landing-card-delay-3 rounded-xl border border-orange-100 bg-orange-50 p-8 text-center dark:border-neutral-800 dark:bg-neutral-900">
                                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-orange-500 text-white">
                                     <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -152,13 +153,16 @@ export default function Welcome({
                                 { name: 'Single Room', price: '₱3,000/mo', desc: 'Perfect for solo tenants who value privacy and quiet space.' },
                                 { name: 'Shared Room', price: '₱2,000/mo', desc: 'A great option for those who enjoy company and want to save.' },
                                 { name: 'Premium Room', price: '₱5,000/mo', desc: 'Spacious room with private bathroom and premium amenities.' },
-                            ].map((room) => (
-                                <div key={room.name} className="overflow-hidden rounded-xl border border-orange-100 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-                                    {/* Placeholder image */}
-                                    <div className="flex h-48 items-center justify-center bg-orange-100 text-orange-300 dark:bg-neutral-800 dark:text-orange-500/60">
-                                        <svg className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
+                            ].map((room, index) => (
+                                <div key={room.name} className={`landing-card overflow-hidden rounded-xl border border-orange-100 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950 ${index === 0 ? 'landing-card-delay-1' : index === 1 ? 'landing-card-delay-2' : 'landing-card-delay-3'}`}>
+                                    <div className="relative h-48 overflow-hidden">
+                                        <img
+                                            src={roomImage}
+                                            alt={`${room.name} preview`}
+                                            className="h-full w-full object-cover transition duration-700 hover:scale-110"
+                                            loading="lazy"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
                                     </div>
                                     <div className="p-6">
                                         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{room.name}</h3>
