@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Bill;
 use App\Models\Payment;
 use App\Services\MonthlyBillingService;
+use App\Services\ReceiptService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,12 +37,21 @@ class AdminBillingController extends Controller
     {
         $result = $monthlyBilling->run();
 
-        return back()->with('success', sprintf(
-            'Monthly billing completed for %s. Created: %d, Marked overdue: %d.',
+        $message = sprintf(
+            'Monthly billing completed for %s. Created: %d, Skipped (already billed): %d, Marked overdue: %d.',
             $result['month_start'],
             $result['created'],
+            $result['skipped'],
             $result['marked_overdue'],
-        ));
+        );
+
+        if (! empty($result['errors'])) {
+            $errorCount = count($result['errors']);
+            $message .= " ⚠️ Warning: $errorCount error(s) occurred during billing.";
+            return back()->with('warning', $message);
+        }
+
+        return back()->with('success', $message);
     }
 
     public function discountBill(Request $request, Bill $bill): RedirectResponse
@@ -54,7 +64,7 @@ class AdminBillingController extends Controller
         return $this->applyBillAdjustment($request, $bill, 'waive');
     }
 
-    public function recordOfflinePayment(Request $request, Bill $bill): RedirectResponse
+    public function recordOfflinePayment(Request $request, Bill $bill, ReceiptService $receiptService): RedirectResponse
     {
         $validated = $request->validate([
             'reference_no' => ['nullable', 'string', 'max:50'],
@@ -62,7 +72,7 @@ class AdminBillingController extends Controller
         ]);
 
         try {
-            DB::transaction(function () use ($bill, $validated): void {
+            $payment = DB::transaction(function () use ($bill, $validated): Payment {
                 /** @var Bill|null $lockedBill */
                 $lockedBill = Bill::query()->where('bill_id', $bill->bill_id)->lockForUpdate()->first();
 
@@ -80,7 +90,7 @@ class AdminBillingController extends Controller
                     throw new \RuntimeException('Bill has no remaining balance.');
                 }
 
-                Payment::create([
+                $payment = Payment::create([
                     'bill_id' => $lockedBill->bill_id,
                     'amount_paid' => $amount,
                     'payment_method' => 'Offline',
@@ -96,12 +106,19 @@ class AdminBillingController extends Controller
                 ]);
 
                 $lockedBill->reconcilePaymentStatus();
+
+                return $payment;
             });
+
+            // Generate receipt after the transaction
+            $receiptPath = $receiptService->generateReceiptPdf($payment);
+            $payment->update(['receipt_url' => $receiptPath]);
+
         } catch (\RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('success', 'Offline payment recorded successfully.');
+        return back()->with('success', 'Offline payment recorded successfully and receipt generated.');
     }
 
     private function applyBillAdjustment(Request $request, Bill $bill, string $type): RedirectResponse

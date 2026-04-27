@@ -12,11 +12,15 @@ return new class extends Migration
         }
 
         // ---------------------------------------------------------------
-        // sp_approve_room_request(p_request_id)
+        // sp_approve_room_request(p_request_id) - DEPRECATED
         //
-        // para sa room interaction: approval ug denial locks
+        // DEPRECATED: Use App\Services\RoomRequestService::approveRequest() instead
         //
-        // Steps (all in one atomic unit):
+        // This stored procedure is kept for backward compatibility only.
+        // All new code should use Laravel's RoomRequestService for consistency
+        // with the application's architectural patterns.
+        //
+        // Legacy Notes (kept for reference):
         //   1. Lock & validate the request row
         //   2. Mark request Approved
         //   3. Mark room Occupied
@@ -68,11 +72,11 @@ return new class extends Migration
                 SET    status = 'Occupied', updated_at = NOW()
                 WHERE  room_id = v_room_id;
 
-                -- 3. Create lease contract
+                -- 3. Create lease contract (monthly auto-renewing)
                 INSERT INTO lease_contracts
-                    (tenant_id, room_id, start_date, end_date, security_deposit, contract_status, created_at, updated_at)
+                    (tenant_id, room_id, start_date, end_date, security_deposit, contract_status, auto_renew, next_renewal_date, created_at, updated_at)
                 VALUES
-                    (v_user_id, v_room_id, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 1 YEAR), 0, 'Active', NOW(), NOW());
+                    (v_user_id, v_room_id, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 1 MONTH), 0, 'Active', TRUE, DATE_ADD(CURDATE(), INTERVAL 1 MONTH), NOW(), NOW());
 
                 -- 4. Reject all other Pending requests for this room
                 UPDATE room_requests
@@ -144,9 +148,18 @@ return new class extends Migration
         ");
 
         // ---------------------------------------------------------------
-        // sp_process_move_out(p_contract_id)
+        // sp_process_move_out(p_contract_id) - DEPRECATED
         //
-        // terminate ang pendingmoveout
+        // DEPRECATED: Use LeaseContract::completeMoveOut() instead
+        //
+        // This stored procedure is kept for backward compatibility only.
+        // All new code should use Laravel's LeaseContract::completeMoveOut()
+        // method for consistency with the application's architectural patterns.
+        //
+        // Legacy Notes (kept for reference):
+        //   1. Validate contract is in Pending_MoveOut status
+        //   2. Update contract status to Terminated
+        //   3. Mark room Available
         // ---------------------------------------------------------------
         DB::unprepared("
             DROP PROCEDURE IF EXISTS sp_process_move_out;

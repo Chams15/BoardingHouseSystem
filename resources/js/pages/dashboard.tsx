@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { DoorOpen, Home, LogOut, Receipt, Users, Wifi, Eye } from 'lucide-react';
+import { DoorOpen, Home, LogOut, Receipt, Users, Wifi, Eye, Download } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,6 +34,7 @@ type Payment = {
     provider_status: string | null;
     paid_at: string | null;
     failure_message: string | null;
+    receipt_url: string | null;
 };
 
 type Room = {
@@ -329,15 +330,30 @@ export default function Dashboard({ activeContract, currentBill, paymentHistory,
                                                         {payment.reference_no && (
                                                             <p className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-2">Ref: {payment.reference_no}</p>
                                                         )}
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="w-full mt-3 text-xs h-8"
-                                                            onClick={() => viewPaymentDetails(payment)}
-                                                        >
-                                                            <Eye className="h-3 w-3 mr-1" />
-                                                            View Details
-                                                        </Button>
+                                                        <div className="flex gap-2 mt-3">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="flex-1 text-xs h-8"
+                                                                onClick={() => viewPaymentDetails(payment)}
+                                                            >
+                                                                <Eye className="h-3 w-3 mr-1" />
+                                                                Details
+                                                            </Button>
+                                                            {payment.receipt_url && payment.provider_status === 'paid' && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="flex-1 text-xs h-8"
+                                                                    asChild
+                                                                >
+                                                                    <a href={`/payments/${payment.payment_id}/receipt/download`} download>
+                                                                        <Download className="h-3 w-3 mr-1" />
+                                                                        Receipt
+                                                                    </a>
+                                                                </Button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>

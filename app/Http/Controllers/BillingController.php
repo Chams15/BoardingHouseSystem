@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Bill;
 use App\Models\Payment;
 use App\Services\PayMongoService;
+use App\Services\ReceiptService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -609,5 +610,20 @@ class BillingController extends Controller
         $segments = array_values(array_filter(explode('/', trim($path, '/'))));
 
         return $segments !== [] ? (string) end($segments) : null;
+    }
+
+    public function downloadReceipt(Request $request, Payment $payment, ReceiptService $receiptService)
+    {
+        // Verify the tenant can only download their own receipt
+        if ($payment->bill->leaseContract->tenant_id !== $request->user()->user_id) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Verify a receipt exists
+        if (! $payment->receipt_url) {
+            abort(404, 'Receipt not found');
+        }
+
+        return $receiptService->downloadReceipt($payment);
     }
 }

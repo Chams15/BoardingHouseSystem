@@ -123,17 +123,24 @@ class RoomController extends Controller
 
         $contract = LeaseContract::where('tenant_id', $user->user_id)
             ->where('contract_status', 'Active')
+            ->lockForUpdate()
             ->first();
 
         if (! $contract) {
             return back()->with('error', 'You do not have an active lease.');
         }
 
-        $contract->update([
-            'contract_status' => 'Pending_MoveOut',
-            'move_out_req_date' => now(),
-        ]);
+        try {
+            $contract->requestAutoRenewalCancellation();
 
-        return back()->with('success', 'Move-out request submitted. Please wait for admin approval.');
+            $moveOutDate = $contract->move_out_final_date->toDateString();
+            $daysRemaining = now()->diffInDays($contract->move_out_final_date);
+
+            return back()->with('success', 
+                "Move-out requested successfully. Your lease will terminate on {$moveOutDate} ({$daysRemaining} days from now)."
+            );
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to process move-out request: ' . $e->getMessage());
+        }
     }
 }

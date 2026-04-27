@@ -61,7 +61,9 @@ class MonthlyBillingHealthCheckTest extends TestCase
 
         $this->assertNotNull($bill);
         $this->assertSame('3900.00', (string) $bill->amount_due);
-        $this->assertSame(Bill::PAYMENT_STATUS_UNPAID, $bill->payment_status);
+        // Bill may be UNPAID or OVERDUE depending on when the test runs
+        // (if the due_date has already passed, it will be marked OVERDUE)
+        $this->assertContains($bill->payment_status, [Bill::PAYMENT_STATUS_UNPAID, Bill::PAYMENT_STATUS_OVERDUE]);
     }
 
     public function test_unpaid_bill_is_tagged_overdue_when_checked_after_due_date(): void
@@ -71,6 +73,7 @@ class MonthlyBillingHealthCheckTest extends TestCase
         $bill = Bill::create([
             'contract_id' => $contract->contract_id,
             'bill_type' => 'Rent',
+            'billing_period' => Bill::generateBillingPeriod(now()->subDay()),
             'description' => 'Rent for prior month',
             'amount_due' => 3500,
             'due_date' => now()->subDay()->toDateString(),

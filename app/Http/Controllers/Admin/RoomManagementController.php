@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LeaseContract;
 use App\Models\Room;
 use App\Models\RoomRequest;
+use App\Services\RoomRequestService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -53,16 +54,12 @@ class RoomManagementController extends Controller
         ]);
     }
 
-    public function approve(RoomRequest $roomRequest): RedirectResponse
+    public function approve(RoomRequest $roomRequest, RoomRequestService $roomRequestService): RedirectResponse
     {
-        // Pessimistic lock: wrap in a transaction and call the stored procedure.
-        // sp_approve_room_request acquires FOR UPDATE locks on both the
-        // room_requests and rooms rows, preventing two concurrent approvals
-        // from creating duplicate contracts.
+        // Uses pessimistic locking to prevent concurrent approvals
+        // and ensure data consistency
         try {
-            DB::transaction(function () use ($roomRequest) {
-                DB::statement('CALL sp_approve_room_request(?)', [$roomRequest->request_id]);
-            });
+            $roomRequestService->approveRequest($roomRequest);
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -70,9 +67,9 @@ class RoomManagementController extends Controller
         return back()->with('success', 'Request approved. Room is now occupied.');
     }
 
-    public function reject(RoomRequest $roomRequest): RedirectResponse
+    public function reject(RoomRequest $roomRequest, RoomRequestService $roomRequestService): RedirectResponse
     {
-        $roomRequest->update(['status' => 'Rejected']);
+        $roomRequestService->rejectRequest($roomRequest);
 
         return back()->with('success', 'Request rejected.');
     }
@@ -92,11 +89,23 @@ class RoomManagementController extends Controller
 
     public function approveMoveOut(LeaseContract $contract): RedirectResponse
     {
-        // Delegates to sp_process_move_out which acquires a FOR UPDATE lock
-        // on the lease_contract row before terminating it.
+        // Uses pessimistic locking to prevent concurrent move-out completions
         try {
             DB::transaction(function () use ($contract) {
-                DB::statement('CALL sp_process_move_out(?)', [$contract->contract_id]);
+                // Lock the contract and validate it's in Pending_MoveOut status
+                $lockedContract = LeaseContract::where('contract_id', $contract->contract_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$lockedContract) {
+                    throw new \Exception('Contract not found.');
+                }
+
+                if ($lockedContract->contract_status !== 'Pending_MoveOut') {
+                    throw new \Exception('Contract does not have a pending move-out request.');
+                }
+
+                $lockedContract->completeMoveOut();
             });
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());

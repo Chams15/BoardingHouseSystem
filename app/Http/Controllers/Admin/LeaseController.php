@@ -31,7 +31,6 @@ class LeaseController
             'tenant_id' => 'required|exists:users,user_id',
             'room_id' => 'required|exists:rooms,room_id',
             'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
             'security_deposit' => 'nullable|numeric|min:0',
         ]);
 
@@ -54,13 +53,17 @@ class LeaseController
             return back()->with('error', 'This room already has an active lease.');
         }
 
+        $startDate = \Carbon\Carbon::parse($validated['start_date']);
+        
         LeaseContract::create([
             'tenant_id' => $validated['tenant_id'],
             'room_id' => $validated['room_id'],
-            'start_date' => $validated['start_date'],
-            'end_date' => $validated['end_date'],
+            'start_date' => $startDate,
+            'end_date' => $startDate->copy()->addMonth(),  // Monthly lease
             'security_deposit' => $validated['security_deposit'] ?? 0,
             'contract_status' => 'Active',
+            'auto_renew' => true,  // Enable auto-renewal by default
+            'next_renewal_date' => $startDate->copy()->addMonth(),  // Renew one month from start
         ]);
 
         // Update room status to Occupied
@@ -68,7 +71,7 @@ class LeaseController
             ->update(['status' => 'Occupied']);
 
         return redirect()->route('admin.rooms.index')
-            ->with('success', 'Lease created successfully.');
+            ->with('success', 'Monthly lease created successfully with auto-renewal enabled.');
     }
 
     /**
@@ -90,9 +93,9 @@ class LeaseController
         $validated = $request->validate([
             'tenant_id' => 'required|exists:users,user_id',
             'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
             'security_deposit' => 'nullable|numeric|min:0',
             'contract_status' => 'required|in:Active,Pending_MoveOut,Terminated',
+            'auto_renew' => 'boolean',
         ]);
 
         // If changing tenant, check for duplicate active leases
@@ -109,7 +112,29 @@ class LeaseController
         }
 
         $oldStatus = $lease->contract_status;
-        $lease->update($validated);
+        $startDate = \Carbon\Carbon::parse($validated['start_date']);
+        
+        // Update auto-renewal setting
+        $lease->auto_renew = $validated['auto_renew'] ?? true;
+        
+        // If we're terminating the lease, disable auto-renewal
+        if ($validated['contract_status'] === 'Terminated') {
+            $lease->auto_renew = false;
+            $lease->next_renewal_date = null;
+        } elseif ($validated['contract_status'] === 'Active' && !$lease->next_renewal_date) {
+            // If reactivating without a renewal date, set it
+            $lease->next_renewal_date = $startDate->copy()->addMonth();
+        }
+        
+        $lease->update([
+            'tenant_id' => $validated['tenant_id'],
+            'start_date' => $startDate,
+            'end_date' => $startDate->copy()->addMonth(),  // Keep end_date one month from start
+            'security_deposit' => $validated['security_deposit'] ?? 0,
+            'contract_status' => $validated['contract_status'],
+            'auto_renew' => $lease->auto_renew,
+            'next_renewal_date' => $lease->next_renewal_date,
+        ]);
 
         // Update room status based on lease status
         if ($oldStatus !== 'Terminated' && $validated['contract_status'] === 'Terminated') {

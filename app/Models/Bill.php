@@ -24,6 +24,7 @@ class Bill extends Model
     protected $fillable = [
         'contract_id',
         'bill_type',
+        'billing_period',
         'description',
         'original_amount_due',
         'amount_due',
@@ -143,5 +144,20 @@ class Bill extends Model
         }
 
         return self::PAYMENT_STATUS_UNPAID;
+    }
+
+    /**
+     * Generate a billing period string (YYYY-MM) from a date.
+     * Used for the unique constraint to prevent duplicate rent bills.
+     *
+     * @param  \Carbon\Carbon|\Illuminate\Support\Carbon|string|\DateTime|null  $date
+     * @return string
+     */
+    public static function generateBillingPeriod($date = null): string
+    {
+        $date = is_string($date) ? \Carbon\Carbon::parse($date) : $date;
+        $date ??= now();
+
+        return $date->format('Y-m');
     }
 }

@@ -1,5 +1,7 @@
 import { Head } from '@inertiajs/react';
+import { Download } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
+import { Button } from '@/components/ui/button';
 import type { BreadcrumbItem } from '@/types';
 
 type PaymentItem = {
@@ -11,6 +13,7 @@ type PaymentItem = {
     provider: string | null;
     provider_status: string | null;
     failure_message: string | null;
+    receipt_url: string | null;
 };
 
 type BillItem = {
@@ -123,12 +126,13 @@ export default function PaymentsIndex({ bills }: Props) {
                                                 <th className="px-3 py-2 font-medium">Amount</th>
                                                 <th className="px-3 py-2 font-medium">Status</th>
                                                 <th className="px-3 py-2 font-medium">Reference</th>
+                                                <th className="px-3 py-2 font-medium">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y dark:divide-neutral-800">
                                             {bill.payments.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={5} className="px-3 py-4 text-center text-xs text-gray-500 dark:text-gray-400">
+                                                    <td colSpan={6} className="px-3 py-4 text-center text-xs text-gray-500 dark:text-gray-400">
                                                         No payment entries for this bill yet.
                                                     </td>
                                                 </tr>
@@ -144,6 +148,22 @@ export default function PaymentsIndex({ bills }: Props) {
                                                             </span>
                                                         </td>
                                                         <td className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">{payment.reference_no ?? '-'}</td>
+                                                        <td className="px-3 py-2">
+                                                            {payment.receipt_url && payment.provider_status === 'paid' ? (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    asChild
+                                                                >
+                                                                    <a href={`/payments/${payment.payment_id}/receipt/download`} download>
+                                                                        <Download className="h-4 w-4" />
+                                                                        Receipt
+                                                                    </a>
+                                                                </Button>
+                                                            ) : (
+                                                                <span className="text-xs text-gray-400 dark:text-gray-500">-</span>
+                                                            )}
+                                                        </td>
                                                     </tr>
                                                 ))
                                             )}

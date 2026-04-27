@@ -96,6 +96,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     'provider_status' => $payment->provider_status,
                     'paid_at' => $payment->paid_at,
                     'failure_message' => $payment->failure_message,
+                    'receipt_url' => $payment->receipt_url,
                 ];
             });
         }
@@ -120,6 +121,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('billing/{bill}/paymongo/return', [BillingController::class, 'returnFromCheckout'])->name('billing.paymongo.return');
     Route::post('billing/{bill}/pay', [BillingController::class, 'pay'])->name('billing.pay');
     Route::get('billing/{bill}/payment-status', [BillingController::class, 'paymentStatus'])->name('billing.payment-status');
+    Route::get('payments/{payment}/receipt/download', [BillingController::class, 'downloadReceipt'])->name('payments.receipt.download');
 
     Route::middleware([EnsureTenantHasRoom::class])->group(function () {
         Route::get('maintenance', [MaintenanceController::class, 'index'])->name('maintenance.index');
