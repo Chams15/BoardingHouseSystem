@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { Eye, RefreshCw } from 'lucide-react';
+import { Eye, RefreshCw, Search } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -56,6 +56,9 @@ type BillItem = {
 
 type Props = {
     bills: BillItem[];
+    filters: {
+        search: string;
+    };
 };
 
 const breadcrumbs = [
@@ -80,7 +83,7 @@ const providerStatusClass: Record<string, string> = {
     processing: 'bg-purple-100 text-purple-700',
 };
 
-export default function AdminBillingIndex({ bills }: Props) {
+export default function AdminBillingIndex({ bills, filters }: Props) {
     const { props } = usePage();
     const flash = props.flash as { success?: string; error?: string } | undefined;
     const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
@@ -91,11 +94,24 @@ export default function AdminBillingIndex({ bills }: Props) {
     const [amount, setAmount] = useState('');
     const [reason, setReason] = useState('');
     const [referenceNo, setReferenceNo] = useState('');
+    const [search, setSearch] = useState(filters.search ?? '');
 
     function handleGenerate() {
         if (confirm('Generate rent bills for all active tenants for this month?')) {
             router.post('/admin/billing/generate-monthly');
         }
+    }
+
+    function refreshResults(nextSearch = search) {
+        router.get(
+            '/admin/billing',
+            { search: nextSearch },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            },
+        );
     }
 
     function viewPaymentDetails(payment: Payment) {
@@ -148,6 +164,33 @@ export default function AdminBillingIndex({ bills }: Props) {
                     <Button onClick={handleGenerate} className="bg-orange-500 text-white hover:bg-orange-600">
                         <RefreshCw className="mr-2 h-4 w-4" />
                         Generate Monthly Bills
+                    </Button>
+                </div>
+
+                <div className="grid gap-3 rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 sm:grid-cols-[1fr_auto]">
+                    <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Input
+                            value={search}
+                            onChange={(e) => {
+                                const next = e.target.value;
+                                setSearch(next);
+                                refreshResults(next);
+                            }}
+                            placeholder="Search by tenant, room, description, status, or payment reference"
+                            className="pl-9"
+                        />
+                    </div>
+
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                            setSearch('');
+                            refreshResults('');
+                        }}
+                    >
+                        Clear filters
                     </Button>
                 </div>
 

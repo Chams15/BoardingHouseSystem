@@ -16,8 +16,10 @@ use Inertia\Response;
 
 class AdminBillingController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $search = trim($request->string('search')->toString());
+
         $bills = Bill::with([
             'leaseContract.tenant.tenantProfile',
             'leaseContract.room',
@@ -25,11 +27,33 @@ class AdminBillingController extends Controller
                 $query->orderByDesc('payment_date');
             },
         ])
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($subQuery) use ($search): void {
+                    $subQuery->where('bill_type', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhere('payment_status', 'like', "%{$search}%")
+                        ->orWhereHas('leaseContract.room', function ($roomQuery) use ($search): void {
+                            $roomQuery->where('room_number', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('leaseContract.tenant.tenantProfile', function ($tenantProfileQuery) use ($search): void {
+                            $tenantProfileQuery->where('full_name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('leaseContract.tenant', function ($tenantQuery) use ($search): void {
+                            $tenantQuery->where('email', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('payments', function ($paymentQuery) use ($search): void {
+                            $paymentQuery->where('reference_no', 'like', "%{$search}%");
+                        });
+                });
+            })
             ->orderBy('due_date', 'desc')
             ->get();
 
         return Inertia::render('admin/billing/index', [
             'bills' => $bills,
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 

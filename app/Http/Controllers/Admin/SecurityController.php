@@ -16,9 +16,23 @@ use Inertia\Response;
 
 class SecurityController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $search = trim($request->string('search')->toString());
+
         $visitorLogs = VisitorLog::with('tenant.tenantProfile')
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($subQuery) use ($search): void {
+                    $subQuery->where('visitor_name', 'like', "%{$search}%")
+                        ->orWhere('purpose', 'like', "%{$search}%")
+                        ->orWhereHas('tenant.tenantProfile', function ($tenantProfileQuery) use ($search): void {
+                            $tenantProfileQuery->where('full_name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('tenant', function ($tenantQuery) use ($search): void {
+                            $tenantQuery->where('email', 'like', "%{$search}%");
+                        });
+                });
+            })
             ->orderByDesc('time_in')
             ->get()
             ->map(function (VisitorLog $log) {
@@ -35,6 +49,20 @@ class SecurityController extends Controller
             });
 
         $incidents = SecurityIncident::with('reporter.tenantProfile')
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($subQuery) use ($search): void {
+                    $subQuery->where('title', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhere('severity', 'like', "%{$search}%")
+                        ->orWhere('status', 'like', "%{$search}%")
+                        ->orWhereHas('reporter.tenantProfile', function ($tenantProfileQuery) use ($search): void {
+                            $tenantProfileQuery->where('full_name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('reporter', function ($reporterQuery) use ($search): void {
+                            $reporterQuery->where('email', 'like', "%{$search}%");
+                        });
+                });
+            })
             ->orderByDesc('created_at')
             ->get();
 
@@ -50,6 +78,9 @@ class SecurityController extends Controller
             'incidents' => $incidents,
             'blacklist' => $blacklist,
             'tenants' => $tenants,
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 

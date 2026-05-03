@@ -15,6 +15,7 @@ class MaintenanceController extends Controller
     public function index(Request $request): Response
     {
         $status = $request->string('status')->toString();
+        $search = trim($request->string('search')->toString());
         $allowedStatuses = ['Pending', 'In Progress', 'Resolved'];
         $recurringSince = now()->subDays(7);
 
@@ -24,6 +25,24 @@ class MaintenanceController extends Controller
 
         if (in_array($status, $allowedStatuses, true)) {
             $query->where('status', $status);
+        }
+
+        if ($search !== '') {
+            $query->where(function ($subQuery) use ($search): void {
+                $subQuery->where('issue_desc', 'like', "%{$search}%")
+                    ->orWhere('priority', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhere('contractor_notes', 'like', "%{$search}%")
+                    ->orWhereHas('room', function ($roomQuery) use ($search): void {
+                        $roomQuery->where('room_number', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('reporter.tenantProfile', function ($tenantProfileQuery) use ($search): void {
+                        $tenantProfileQuery->where('full_name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('reporter', function ($reporterQuery) use ($search): void {
+                        $reporterQuery->where('email', 'like', "%{$search}%");
+                    });
+            });
         }
 
         $tickets = $query->get()->map(function (MaintenanceTicket $ticket) {
@@ -81,6 +100,7 @@ class MaintenanceController extends Controller
             'tickets' => $tickets,
             'filters' => [
                 'status' => $status,
+                'search' => $search,
             ],
             'recurringWindowDays' => 7,
             'recurringByRoom' => $recurringByRoom,

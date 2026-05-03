@@ -1,6 +1,8 @@
 import { Head, router, usePage } from '@inertiajs/react';
+import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import AdminLayout from '@/layouts/admin-layout';
 
 type Tenant = {
@@ -42,6 +44,7 @@ type Props = {
     incidents: Incident[];
     blacklist: Blacklist[];
     tenants: Tenant[];
+    filters: { search: string };
 };
 
 const breadcrumbs = [
@@ -49,7 +52,7 @@ const breadcrumbs = [
     { title: 'Security', href: '/admin/security' },
 ];
 
-export default function AdminSecurityIndex({ visitorLogs, incidents, blacklist, tenants }: Props) {
+export default function AdminSecurityIndex({ visitorLogs, incidents, blacklist, tenants, filters }: Props) {
     const { props } = usePage();
     const flash = props.flash as { success?: string; error?: string } | undefined;
 
@@ -64,8 +67,21 @@ export default function AdminSecurityIndex({ visitorLogs, incidents, blacklist, 
 
     const [blacklistEmail, setBlacklistEmail] = useState('');
     const [blacklistReason, setBlacklistReason] = useState('');
+    const [search, setSearch] = useState(filters.search ?? '');
 
     const activeVisitors = useMemo(() => visitorLogs.filter((v) => v.time_out === null), [visitorLogs]);
+
+    function refreshResults(nextSearch = search) {
+        router.get(
+            '/admin/security',
+            { search: nextSearch },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            },
+        );
+    }
 
     function submitVisitor(e: React.FormEvent) {
         e.preventDefault();
@@ -141,6 +157,33 @@ export default function AdminSecurityIndex({ visitorLogs, incidents, blacklist, 
 
             <div className="space-y-6">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Security & Access Control</h1>
+
+                <div className="grid gap-3 rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 sm:grid-cols-[1fr_auto]">
+                    <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Input
+                            value={search}
+                            onChange={(e) => {
+                                const next = e.target.value;
+                                setSearch(next);
+                                refreshResults(next);
+                            }}
+                            placeholder="Search visitor logs or incidents by name, tenant, title, or description"
+                            className="pl-9"
+                        />
+                    </div>
+
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                            setSearch('');
+                            refreshResults('');
+                        }}
+                    >
+                        Clear filters
+                    </Button>
+                </div>
 
                 {flash?.success && <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">{flash.success}</div>}
                 {flash?.error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{flash.error}</div>}

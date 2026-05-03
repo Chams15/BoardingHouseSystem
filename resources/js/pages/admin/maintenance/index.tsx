@@ -1,7 +1,9 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { Search } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
     Dialog,
     DialogContent,
@@ -53,7 +55,7 @@ type Props = {
     recurringByRoom: RecurringByRoom[];
     recurringByTenant: RecurringByTenant[];
     recurringWindowDays: number;
-    filters: { status?: string };
+    filters: { status?: string; search: string };
 };
 
 const breadcrumbs = [
@@ -66,6 +68,7 @@ export default function AdminMaintenanceIndex({ tickets, recurringByRoom, recurr
     const flash = props.flash as { success?: string; error?: string } | undefined;
 
     const [statusFilter, setStatusFilter] = useState(filters.status ?? '');
+    const [search, setSearch] = useState(filters.search ?? '');
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
 
@@ -74,8 +77,15 @@ export default function AdminMaintenanceIndex({ tickets, recurringByRoom, recurr
         contractor_notes: '',
     });
 
-    function applyFilter() {
-        router.get('/admin/maintenance', { status: statusFilter || undefined }, { preserveState: true });
+    function refreshResults(nextSearch = search, nextStatus = statusFilter) {
+        router.get(
+            '/admin/maintenance',
+            {
+                status: nextStatus || undefined,
+                search: nextSearch || undefined,
+            },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
     }
 
     function openUpdateModal(ticket: Ticket) {
@@ -111,20 +121,48 @@ export default function AdminMaintenanceIndex({ tickets, recurringByRoom, recurr
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Maintenance Tickets</h1>
+                </div>
 
-                    <div className="flex items-center gap-2">
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-100"
-                        >
-                            <option value="">All</option>
-                            <option value="Pending">Pending</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="Resolved">Resolved</option>
-                        </select>
-                        <Button variant="outline" onClick={applyFilter}>Filter</Button>
+                <div className="grid gap-3 rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 lg:grid-cols-[1fr_200px_auto]">
+                    <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Input
+                            value={search}
+                            onChange={(e) => {
+                                const next = e.target.value;
+                                setSearch(next);
+                                refreshResults(next, statusFilter);
+                            }}
+                            placeholder="Search by reporter, room, issue, notes, or status"
+                            className="pl-9"
+                        />
                     </div>
+
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => {
+                            const next = e.target.value;
+                            setStatusFilter(next);
+                            refreshResults(search, next);
+                        }}
+                        className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-100"
+                    >
+                        <option value="">All</option>
+                        <option value="Pending">Pending</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Resolved">Resolved</option>
+                    </select>
+
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            setSearch('');
+                            setStatusFilter('');
+                            router.get('/admin/maintenance', {}, { preserveState: true, preserveScroll: true, replace: true });
+                        }}
+                    >
+                        Clear filters
+                    </Button>
                 </div>
 
                 {flash?.success && <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">{flash.success}</div>}
