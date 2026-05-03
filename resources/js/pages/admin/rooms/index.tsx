@@ -1,6 +1,8 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { LogOut, UserMinus, Plus, Edit, Settings } from 'lucide-react';
+import { LogOut, UserMinus, Plus, Edit, Settings, Search } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import AdminLayout from '@/layouts/admin-layout';
 
 type Tenant = {
@@ -33,6 +35,9 @@ type Room = {
 
 type Props = {
     rooms: Room[];
+    filters: {
+        search: string;
+    };
 };
 
 const breadcrumbs = [
@@ -40,9 +45,10 @@ const breadcrumbs = [
     { title: 'Rooms', href: '/admin/rooms' },
 ];
 
-export default function AdminRoomsIndex({ rooms }: Props) {
+export default function AdminRoomsIndex({ rooms, filters }: Props) {
     const { props } = usePage();
     const flash = props.flash as { success?: string } | undefined;
+    const [search, setSearch] = useState(filters.search ?? '');
 
     function handleRemoveTenant(roomId: number) {
         if (confirm('Are you sure you want to remove the tenant from this room?')) {
@@ -54,6 +60,18 @@ export default function AdminRoomsIndex({ rooms }: Props) {
         if (confirm('Approve this move-out request? The room will become available.')) {
             router.post(`/admin/rooms/contracts/${contractId}/approve-move-out`);
         }
+    }
+
+    function refreshResults(nextSearch = search) {
+        router.get(
+            '/admin/rooms',
+            { search: nextSearch },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            },
+        );
     }
 
     return (
@@ -88,6 +106,33 @@ export default function AdminRoomsIndex({ rooms }: Props) {
                         {flash.success}
                     </div>
                 )}
+
+                <div className="grid gap-3 rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 sm:grid-cols-[1fr_auto]">
+                    <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Input
+                            value={search}
+                            onChange={(e) => {
+                                const next = e.target.value;
+                                setSearch(next);
+                                refreshResults(next);
+                            }}
+                            placeholder="Search by room number, category, status, tenant name, or amenities"
+                            className="pl-9"
+                        />
+                    </div>
+
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                            setSearch('');
+                            refreshResults('');
+                        }}
+                    >
+                        Clear filters
+                    </Button>
+                </div>
 
                 <div className="overflow-hidden rounded-xl border bg-white dark:bg-neutral-900 dark:border-neutral-800 shadow-sm">
                     <table className="w-full text-left text-sm">

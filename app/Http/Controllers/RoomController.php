@@ -17,7 +17,17 @@ class RoomController extends Controller
 {
     public function index(Request $request): Response
     {
+        $search = trim($request->string('search')->toString());
+
         $rooms = Room::withCount(['roomRequests' => fn ($q) => $q->where('status', 'Pending')])
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($subQuery) use ($search): void {
+                    $subQuery->where('room_number', 'like', "%{$search}%")
+                        ->orWhere('category', 'like', "%{$search}%")
+                        ->orWhere('status', 'like', "%{$search}%")
+                        ->orWhere('amenities', 'like', "%{$search}%");
+                });
+            })
             ->get()
             ->map(function (Room $room): array {
                 return [
@@ -53,6 +63,9 @@ class RoomController extends Controller
             'hasActiveContract' => $hasActiveContract,
             'canRequestRooms' => $canRequestRooms,
             'verificationStatus' => $verificationStatus,
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 

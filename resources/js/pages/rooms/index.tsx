@@ -1,6 +1,8 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { DoorOpen, Users, Wifi } from 'lucide-react';
+import { DoorOpen, Users, Wifi, Search } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -22,6 +24,9 @@ type Props = {
     hasActiveContract: boolean;
     canRequestRooms: boolean;
     verificationStatus: 'Not_Submitted' | 'Pending' | 'Approved' | 'Rejected';
+    filters: {
+        search: string;
+    };
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -29,9 +34,10 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Rooms', href: '/rooms' },
 ];
 
-export default function RoomsIndex({ rooms, userPendingRequests, hasActiveContract, canRequestRooms, verificationStatus }: Props) {
+export default function RoomsIndex({ rooms, userPendingRequests, hasActiveContract, canRequestRooms, verificationStatus, filters }: Props) {
     const { props } = usePage();
     const flash = props.flash as { success?: string; error?: string } | undefined;
+    const [search, setSearch] = useState(filters.search ?? '');
 
     function handleRequest(roomId: number) {
         router.post(`/rooms/${roomId}/request`, {}, { preserveState: true });
@@ -39,6 +45,18 @@ export default function RoomsIndex({ rooms, userPendingRequests, hasActiveContra
 
     function handleCancel(roomId: number) {
         router.delete(`/rooms/requests/${roomId}/cancel`, { preserveState: true });
+    }
+
+    function refreshResults(nextSearch = search) {
+        router.get(
+            '/rooms',
+            { search: nextSearch },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            },
+        );
     }
 
     return (
@@ -69,8 +87,40 @@ export default function RoomsIndex({ rooms, userPendingRequests, hasActiveContra
                     </div>
                 )}
 
+                <div className="grid gap-3 rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 sm:grid-cols-[1fr_auto]">
+                    <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Input
+                            value={search}
+                            onChange={(e) => {
+                                const next = e.target.value;
+                                setSearch(next);
+                                refreshResults(next);
+                            }}
+                            placeholder="Search by room number, category, status, or amenities"
+                            className="pl-9"
+                        />
+                    </div>
+
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                            setSearch('');
+                            refreshResults('');
+                        }}
+                    >
+                        Clear filters
+                    </Button>
+                </div>
+
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {rooms.map((room) => {
+                    {rooms.length === 0 ? (
+                        <div className="col-span-full text-center py-12">
+                            <p className="text-gray-500 dark:text-gray-400">No rooms found matching your search.</p>
+                        </div>
+                    ) : (
+                        rooms.map((room) => {
                         const isAvailable = room.status === 'Available';
                         const pendingRequestId = userPendingRequests[room.room_id];
 
@@ -172,7 +222,8 @@ export default function RoomsIndex({ rooms, userPendingRequests, hasActiveContra
                                 </div>
                             </div>
                         );
-                    })}
+                    })
+                    )}
                 </div>
             </div>
         </AppLayout>

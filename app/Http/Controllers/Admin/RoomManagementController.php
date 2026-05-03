@@ -16,11 +16,27 @@ use Inertia\Response;
 
 class RoomManagementController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $search = trim($request->string('search')->toString());
+
         $rooms = Room::with(['leaseContracts' => function ($q) {
             $q->whereIn('contract_status', ['Active', 'Pending_MoveOut'])->with('tenant.tenantProfile');
         }])->withCount(['roomRequests' => fn ($q) => $q->where('status', 'Pending')])
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($subQuery) use ($search): void {
+                    $subQuery->where('room_number', 'like', "%{$search}%")
+                        ->orWhere('category', 'like', "%{$search}%")
+                        ->orWhere('status', 'like', "%{$search}%")
+                        ->orWhere('amenities', 'like', "%{$search}%")
+                        ->orWhereHas('leaseContracts.tenant.tenantProfile', function ($tenantProfileQuery) use ($search): void {
+                            $tenantProfileQuery->where('full_name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('leaseContracts.tenant', function ($tenantQuery) use ($search): void {
+                            $tenantQuery->where('email', 'like', "%{$search}%");
+                        });
+                });
+            })
           ->get()
           ->map(function (Room $room): array {
               return [
@@ -39,6 +55,9 @@ class RoomManagementController extends Controller
 
         return Inertia::render('admin/rooms/index', [
             'rooms' => $rooms,
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 
