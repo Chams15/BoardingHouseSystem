@@ -16,6 +16,8 @@ Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])
     ->name('admin.')
     ->group(function () {
         Route::get('dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+        Route::get('dashboard/financial-summary.pdf', [AdminDashboardController::class, 'exportFinancialReport'])->name('dashboard.financial-summary.pdf');
+        Route::get('dashboard/financial-reports/{financialReport}/download', [AdminDashboardController::class, 'downloadFinancialReport'])->name('dashboard.financial-reports.download');
 
         Route::get('tenants', [TenantController::class, 'index'])->name('tenants.index');
         Route::get('tenants/create', [TenantController::class, 'create'])->name('tenants.create');

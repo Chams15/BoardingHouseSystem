@@ -38,3 +38,4 @@ Artisan::command('billing:generate-monthly {--month= : Target month in YYYY-MM f
 })->purpose('Generate monthly rent bills and mark overdue unpaid bills');
 
 Schedule::command('billing:generate-monthly')->monthlyOn(1, '00:10');
+Schedule::command('reports:generate-monthly-financial')->dailyAt('23:55')->withoutOverlapping();
