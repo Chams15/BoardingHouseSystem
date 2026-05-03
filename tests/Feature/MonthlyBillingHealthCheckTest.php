@@ -20,7 +20,8 @@ class MonthlyBillingHealthCheckTest extends TestCase
         ]);
 
         $contract = $this->createActiveContract(4200);
-        $monthStart = now()->startOfMonth()->toDateString();
+        $expectedDueDate = $contract->billingDueDateFor();
+        $expectedBillingPeriod = $contract->billingPeriodFor();
 
         $this->actingAs($admin)->post(route('admin.billing.generate-monthly'))->assertRedirect();
         $this->actingAs($admin)->post(route('admin.billing.generate-monthly'))->assertRedirect();
@@ -30,7 +31,7 @@ class MonthlyBillingHealthCheckTest extends TestCase
             Bill::query()
                 ->where('contract_id', $contract->contract_id)
                 ->where('bill_type', 'Rent')
-                ->whereDate('due_date', $monthStart)
+                ->where('billing_period', $expectedBillingPeriod)
                 ->count(),
             'Monthly generation should not duplicate rent bills for the same contract and month.'
         );
@@ -38,10 +39,11 @@ class MonthlyBillingHealthCheckTest extends TestCase
         $bill = Bill::query()
             ->where('contract_id', $contract->contract_id)
             ->where('bill_type', 'Rent')
-            ->whereDate('due_date', $monthStart)
+            ->where('billing_period', $expectedBillingPeriod)
             ->first();
 
         $this->assertNotNull($bill);
+        $this->assertSame($expectedDueDate->toDateString(), $bill->due_date->toDateString());
         $this->assertSame('4200.00', (string) $bill->amount_due);
         $this->assertContains($bill->payment_status, [Bill::PAYMENT_STATUS_UNPAID, Bill::PAYMENT_STATUS_OVERDUE]);
     }
@@ -49,17 +51,19 @@ class MonthlyBillingHealthCheckTest extends TestCase
     public function test_monthly_billing_artisan_command_uses_lease_rows_to_generate_bills(): void
     {
         $contract = $this->createActiveContract(3900);
-        $monthStart = now()->startOfMonth()->toDateString();
+        $expectedDueDate = $contract->billingDueDateFor();
+        $expectedBillingPeriod = $contract->billingPeriodFor();
 
         $this->artisan('billing:generate-monthly')->assertSuccessful();
 
         $bill = Bill::query()
             ->where('contract_id', $contract->contract_id)
             ->where('bill_type', 'Rent')
-            ->whereDate('due_date', $monthStart)
+            ->where('billing_period', $expectedBillingPeriod)
             ->first();
 
         $this->assertNotNull($bill);
+        $this->assertSame($expectedDueDate->toDateString(), $bill->due_date->toDateString());
         $this->assertSame('3900.00', (string) $bill->amount_due);
         // Bill may be UNPAID or OVERDUE depending on when the test runs
         // (if the due_date has already passed, it will be marked OVERDUE)
@@ -101,13 +105,16 @@ class MonthlyBillingHealthCheckTest extends TestCase
             'status' => 'Occupied',
         ]);
 
+        $startDate = now()->subMonth();
         return LeaseContract::create([
             'tenant_id' => $tenant->user_id,
             'room_id' => $room->room_id,
-            'start_date' => now()->subMonth()->toDateString(),
-            'end_date' => now()->addYear()->toDateString(),
+            'start_date' => $startDate->toDateString(),
+            'end_date' => $startDate->copy()->addMonth()->toDateString(),
             'security_deposit' => $monthlyRent,
             'contract_status' => 'Active',
+            'auto_renew' => true,
+            'next_renewal_date' => $startDate->copy()->addMonth()->toDateString(),
         ]);
     }
 }

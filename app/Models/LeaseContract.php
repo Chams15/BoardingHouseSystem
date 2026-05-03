@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -51,6 +52,47 @@ class LeaseContract extends Model
     public function bills(): HasMany
     {
         return $this->hasMany(Bill::class, 'contract_id', 'contract_id');
+    }
+
+    /**
+     * Resolve the lease date that anchors billing for this contract.
+     */
+    public function billingAnchorDate(): ?CarbonInterface
+    {
+        return $this->next_renewal_date ?? $this->start_date;
+    }
+
+    /**
+     * Resolve the rent due date for a given billing month.
+     *
+     * The due date uses the lease's own anchor day instead of a fixed
+     * calendar rule, so billing stays aligned with the contract itself.
+     */
+    public function billingDueDateFor(?CarbonInterface $billingDate = null): CarbonInterface
+    {
+        $billingDate ??= now();
+        $billingMonth = $billingDate->copy()->startOfMonth();
+        $anchorDate = $this->billingAnchorDate();
+
+        if (! $anchorDate) {
+            return $billingMonth;
+        }
+
+        $dueDate = $billingMonth->setDay((int) $anchorDate->format('d'));
+
+        while ($dueDate->month !== $billingMonth->month) {
+            $dueDate = $dueDate->subDay();
+        }
+
+        return $dueDate;
+    }
+
+    /**
+     * Resolve the billing period for a given month using the lease contract.
+     */
+    public function billingPeriodFor(?CarbonInterface $billingDate = null): string
+    {
+        return $this->billingDueDateFor($billingDate)->format('Y-m');
     }
 
     /**

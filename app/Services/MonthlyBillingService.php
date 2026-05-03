@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\Bill;
 use App\Models\LeaseContract;
-use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 
 class MonthlyBillingService
@@ -19,14 +19,12 @@ class MonthlyBillingService
      * - Atomic: Uses transactions for data consistency
      * - Concurrent-safe: Uses database locks to prevent race conditions
      *
-     * @param  \Carbon\Carbon|null  $billingDate  The date to use for billing (defaults to now)
+     * @param  \Carbon\CarbonInterface|null  $billingDate  The date to use for billing (defaults to now)
      * @return array{created:int, skipped:int, marked_overdue:int, month_start:string, errors:array}
      */
-    public function run(?Carbon $billingDate = null): array
+    public function run(?CarbonInterface $billingDate = null): array
     {
         $billingDate ??= now();
-        $monthStart = $billingDate->copy()->startOfMonth();
-        $billingPeriod = Bill::generateBillingPeriod($monthStart);
         $today = now()->startOfDay();
 
         $created = 0;
@@ -36,7 +34,7 @@ class MonthlyBillingService
 
         // Wrap everything in a transaction to ensure atomicity
         try {
-            DB::transaction(function () use ($monthStart, $billingPeriod, $today, &$created, &$skipped, &$markedOverdue, &$errors): void {
+            DB::transaction(function () use ($billingDate, $today, &$created, &$skipped, &$markedOverdue, &$errors): void {
                 // Get all active contracts with pessimistic locking
                 $contracts = LeaseContract::query()
                     ->with('room')
@@ -52,8 +50,7 @@ class MonthlyBillingService
                     try {
                         $this->createRentBillForContract(
                             $contract,
-                            $monthStart,
-                            $billingPeriod,
+                            $billingDate,
                             $created,
                             $skipped
                         );
@@ -80,7 +77,7 @@ class MonthlyBillingService
             'created' => $created,
             'skipped' => $skipped,
             'marked_overdue' => $markedOverdue,
-            'month_start' => $monthStart->toDateString(),
+            'month_start' => $billingDate->copy()->startOfMonth()->toDateString(),
             'errors' => $errors,
         ];
     }
@@ -91,16 +88,20 @@ class MonthlyBillingService
      * Uses the unique constraint to prevent duplicate bills.
      * If a bill already exists for this period, it's silently skipped.
      *
+     * Bills are due on the same day of the month as the lease's renewal date.
+     * For example, if a lease renews on the 15th, bills are due on the 15th of each month.
+     *
      * @throws \Illuminate\Database\UniqueConstraintViolationException
      */
     private function createRentBillForContract(
         LeaseContract $contract,
-        $monthStart,
-        string $billingPeriod,
+        CarbonInterface $billingDate,
         int &$created,
         int &$skipped
     ): void {
         $amountDue = (float) $contract->room->price_monthly;
+        $billingPeriod = $contract->billingPeriodFor($billingDate);
+        $dueDate = $contract->billingDueDateFor($billingDate);
 
         // First, do a simple check before attempting insert
         // This allows us to skip duplicate checks early
@@ -116,16 +117,17 @@ class MonthlyBillingService
             return;
         }
 
+        // Calculate due date based on the lease's next_renewal_date
         // Create the new bill
         // The database unique constraint will prevent duplicates if we somehow get here twice
         Bill::create([
             'contract_id' => $contract->contract_id,
             'bill_type' => 'Rent',
             'billing_period' => $billingPeriod,
-            'description' => 'Rent for '.$monthStart->format('F Y'),
+            'description' => 'Rent for '.$dueDate->format('F Y'),
             'original_amount_due' => $amountDue,
             'amount_due' => $amountDue,
-            'due_date' => $monthStart->toDateString(),
+            'due_date' => $dueDate->toDateString(),
             'payment_status' => Bill::PAYMENT_STATUS_UNPAID,
             'discount_amount' => 0,
             'waived_amount' => 0,
@@ -138,7 +140,7 @@ class MonthlyBillingService
     /**
      * Mark bills as overdue if they are past due and not yet settled.
      */
-    private function markOverdueBills($today): int
+    private function markOverdueBills(CarbonInterface $today): int
     {
         $markedOverdue = 0;
 

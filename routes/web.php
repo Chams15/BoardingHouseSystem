@@ -29,14 +29,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         $currentBill = null;
         if ($activeContract && $activeContract->contract_status === 'Active') {
+            $dueDate = $activeContract->billingDueDateFor();
+
             $currentBill = \App\Models\Bill::firstOrCreate(
                 [
                     'contract_id' => $activeContract->contract_id,
                     'bill_type'   => 'Rent',
-                    'due_date'    => now()->startOfMonth()->toDateString(),
+                    'billing_period' => $activeContract->billingPeriodFor(),
                 ],
                 [
-                    'description'    => 'Rent for ' . now()->format('F Y'),
+                    'due_date'       => $dueDate->toDateString(),
+                    'description'    => 'Rent for ' . $dueDate->format('F Y'),
                     'amount_due'     => $activeContract->room->price_monthly,
                     'payment_status' => 'Unpaid',
                 ]
