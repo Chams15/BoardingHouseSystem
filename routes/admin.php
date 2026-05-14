@@ -60,6 +60,9 @@ Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])
         Route::put('maintenance/{ticket}', [MaintenanceController::class, 'update'])->name('maintenance.update');
 
         Route::get('security', [SecurityController::class, 'index'])->name('security.index');
+        Route::get('security/visitors', [SecurityController::class, 'visitors'])->name('security.visitors.index');
+        Route::get('security/incidents', [SecurityController::class, 'incidents'])->name('security.incidents.index');
+        Route::get('security/blacklist', [SecurityController::class, 'blacklist'])->name('security.blacklist.index');
         Route::post('security/visitors', [SecurityController::class, 'storeVisitor'])->name('security.visitors.store');
         Route::post('security/visitors/{visitorLog}/checkout', [SecurityController::class, 'checkOutVisitor'])->name('security.visitors.checkout');
         Route::post('security/incidents', [SecurityController::class, 'storeIncident'])->name('security.incidents.store');

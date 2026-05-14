@@ -4,8 +4,20 @@
     <meta charset="utf-8">
     <title>Financial Summary - {{ $report['monthLabel'] }}</title>
     <style>
+        @font-face {
+            font-family: 'DejaVu Sans Local';
+            font-style: normal;
+            font-weight: 400;
+            src: url("file://{{ base_path('vendor/dompdf/dompdf/lib/fonts/DejaVuSans.ttf') }}") format('truetype');
+        }
+        @font-face {
+            font-family: 'DejaVu Sans Local';
+            font-style: bold;
+            font-weight: 700;
+            src: url("file://{{ base_path('vendor/dompdf/dompdf/lib/fonts/DejaVuSans-Bold.ttf') }}") format('truetype');
+        }
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'DejaVu Sans Local', 'DejaVu Sans', Arial, sans-serif;
             margin: 0;
             padding: 24px;
             color: #1f2937;
@@ -45,7 +57,7 @@
 
         .summary-card {
             display: table-cell;
-            width: 16.66%;
+            width: 20%;
             vertical-align: top;
             background: #f9fafb;
             border: 1px solid #e5e7eb;
@@ -153,23 +165,19 @@
         <div class="summary-grid">
             <div class="summary-card">
                 <div class="summary-label">Billed</div>
-                <div class="summary-value">₱{{ number_format($report['summary']['billed_amount'], 2) }}</div>
+                <div class="summary-value">&#x20B1;{{ number_format($report['summary']['billed_amount'], 2) }}</div>
             </div>
             <div class="summary-card">
                 <div class="summary-label">Collected</div>
-                <div class="summary-value">₱{{ number_format($report['summary']['collected_amount'], 2) }}</div>
+                <div class="summary-value">&#x20B1;{{ number_format($report['summary']['collected_amount'], 2) }}</div>
             </div>
             <div class="summary-card">
                 <div class="summary-label">Outstanding</div>
-                <div class="summary-value">₱{{ number_format($report['summary']['outstanding_amount'], 2) }}</div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-label">Discounts</div>
-                <div class="summary-value">₱{{ number_format($report['summary']['discount_amount'], 2) }}</div>
+                <div class="summary-value">&#x20B1;{{ number_format($report['summary']['outstanding_amount'], 2) }}</div>
             </div>
             <div class="summary-card">
                 <div class="summary-label">Waived</div>
-                <div class="summary-value">₱{{ number_format($report['summary']['waived_amount'], 2) }}</div>
+                <div class="summary-value">&#x20B1;{{ number_format($report['summary']['waived_amount'], 2) }}</div>
             </div>
             <div class="summary-card">
                 <div class="summary-label">Payments</div>
@@ -221,9 +229,9 @@
                     @foreach ($report['monthlyHistory'] as $row)
                         <tr>
                             <td>{{ $row['monthLabel'] }}</td>
-                            <td>₱{{ number_format($row['billed_amount'], 2) }}</td>
-                            <td>₱{{ number_format($row['collected_amount'], 2) }}</td>
-                            <td>₱{{ number_format($row['waived_amount'], 2) }}</td>
+                            <td>&#x20B1;{{ number_format($row['billed_amount'], 2) }}</td>
+                            <td>&#x20B1;{{ number_format($row['collected_amount'], 2) }}</td>
+                            <td>&#x20B1;{{ number_format($row['waived_amount'], 2) }}</td>
                             <td>{{ $row['payment_count'] }} total / {{ $row['settled_count'] }} settled</td>
                         </tr>
                     @endforeach
@@ -255,7 +263,7 @@
                                 <br>
                                 <span class="muted">{{ $payment['bill']['billing_period'] ?? '—' }}</span>
                             </td>
-                            <td>₱{{ number_format($payment['amount_paid'], 2) }}</td>
+                            <td>&#x20B1;{{ number_format($payment['amount_paid'], 2) }}</td>
                             <td>{{ $payment['provider_status'] ?? 'unknown' }}</td>
                             <td>{{ \Illuminate\Support\Carbon::parse($payment['paid_at'])->format('M d, Y g:i A') }}</td>
                         </tr>

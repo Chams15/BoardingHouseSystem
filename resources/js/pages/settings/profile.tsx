@@ -12,6 +12,7 @@ import SettingsLayout from '@/layouts/settings/layout';
 import { edit } from '@/routes/profile';
 import { send } from '@/routes/verification';
 import type { BreadcrumbItem } from '@/types';
+import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -19,6 +20,15 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: edit(),
     },
 ];
+
+const requiredFields = [
+    'full_name',
+    'email',
+    'contact_number',
+    'contact_address',
+];
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Profile({
     mustVerifyEmail,
@@ -28,6 +38,38 @@ export default function Profile({
     status?: string;
 }) {
     const { auth } = usePage().props;
+    const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+    const validateForm = (formData: FormData): boolean => {
+        const errors: Record<string, string> = {};
+
+        requiredFields.forEach((field) => {
+            const value = formData.get(field);
+
+            if (!value || (typeof value === 'string' && value.trim() === '')) {
+                const fieldLabel = field
+                    .replace(/_/g, ' ')
+                    .replace(/\b\w/g, (letter: string) => letter.toUpperCase());
+                errors[field] = `The ${fieldLabel} field is required`;
+            }
+        });
+
+        const email = formData.get('email');
+        if (typeof email === 'string' && email.trim() !== '' && !emailPattern.test(email.trim())) {
+            errors.email = 'The email must be a valid email address.';
+        }
+
+        setValidationErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
+    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        const formData = new FormData(event.currentTarget);
+
+        if (!validateForm(formData)) {
+            event.preventDefault();
+        }
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -48,7 +90,9 @@ export default function Profile({
                         options={{
                             preserveScroll: true,
                         }}
+                        noValidate
                         className="space-y-6"
+                        onSubmit={handleSubmit}
                     >
                         {({ processing, recentlySuccessful, errors }) => (
                             <>
@@ -60,14 +104,13 @@ export default function Profile({
                                         className="mt-1 block w-full"
                                         defaultValue={auth.user.tenant_profile?.full_name ?? ''}
                                         name="full_name"
-                                        required
                                         autoComplete="name"
                                         placeholder="Full name"
                                     />
 
                                     <InputError
                                         className="mt-2"
-                                        message={errors.full_name}
+                                        message={errors.full_name || validationErrors.full_name}
                                     />
                                 </div>
 
@@ -80,14 +123,13 @@ export default function Profile({
                                         className="mt-1 block w-full"
                                         defaultValue={auth.user.email}
                                         name="email"
-                                        required
                                         autoComplete="username"
                                         placeholder="Email address"
                                     />
 
                                     <InputError
                                         className="mt-2"
-                                        message={errors.email}
+                                        message={errors.email || validationErrors.email}
                                     />
                                 </div>
 
@@ -100,14 +142,13 @@ export default function Profile({
                                         className="mt-1 block w-full"
                                         defaultValue={auth.user.tenant_profile?.contact_number ?? ''}
                                         name="contact_number"
-                                        required
                                         autoComplete="tel"
                                         placeholder="09XX XXX XXXX"
                                     />
 
                                     <InputError
                                         className="mt-2"
-                                        message={errors.contact_number}
+                                        message={errors.contact_number || validationErrors.contact_number}
                                     />
                                 </div>
 
@@ -119,13 +160,12 @@ export default function Profile({
                                         className="mt-1 block w-full"
                                         defaultValue={auth.user.tenant_profile?.contact_address ?? ''}
                                         name="contact_address"
-                                        required
                                         placeholder="House no., street, barangay, city"
                                     />
 
                                     <InputError
                                         className="mt-2"
-                                        message={errors.contact_address}
+                                        message={errors.contact_address || validationErrors.contact_address}
                                     />
                                 </div>
 

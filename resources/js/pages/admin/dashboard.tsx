@@ -21,7 +21,6 @@ type Props = {
             billed_amount: number;
             collected_amount: number;
             waived_amount: number;
-            discount_amount: number;
             outstanding_amount: number;
             bill_count: number;
             payment_count: number;
@@ -96,7 +95,6 @@ export default function AdminDashboard({ stats, financialReport, financialReport
         { label: 'Billed', value: formatMoney(financialReport.summary.billed_amount), icon: Wallet, color: 'bg-slate-900' },
         { label: 'Collected', value: formatMoney(financialReport.summary.collected_amount), icon: TrendingUp, color: 'bg-emerald-600' },
         { label: 'Outstanding', value: formatMoney(financialReport.summary.outstanding_amount), icon: BarChart3, color: 'bg-orange-500' },
-        { label: 'Discounts', value: formatMoney(financialReport.summary.discount_amount), icon: DoorOpen, color: 'bg-indigo-600' },
         { label: 'Waived', value: formatMoney(financialReport.summary.waived_amount), icon: UserX, color: 'bg-rose-600' },
         { label: 'Payments', value: financialReport.summary.payment_count, icon: Users, color: 'bg-blue-600' },
     ];
@@ -149,7 +147,7 @@ export default function AdminDashboard({ stats, financialReport, financialReport
                         </div>
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                         {reportCards.map((card) => (
                             <div key={card.label} className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-neutral-800 dark:bg-neutral-950/50">
                                 <div className="flex items-center justify-between">

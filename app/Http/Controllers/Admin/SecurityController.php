@@ -16,7 +16,12 @@ use Inertia\Response;
 
 class SecurityController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(): RedirectResponse
+    {
+        return redirect()->route('admin.security.visitors.index');
+    }
+
+    public function visitors(Request $request): Response
     {
         $search = trim($request->string('search')->toString());
 
@@ -48,6 +53,24 @@ class SecurityController extends Controller
                 ];
             });
 
+        $tenants = User::where('role', 'Tenant')
+            ->with('tenantProfile')
+            ->orderBy('email')
+            ->get(['user_id', 'email']);
+
+        return Inertia::render('admin/security/visitors', [
+            'visitorLogs' => $visitorLogs,
+            'tenants' => $tenants,
+            'filters' => [
+                'search' => $search,
+            ],
+        ]);
+    }
+
+    public function incidents(Request $request): Response
+    {
+        $search = trim($request->string('search')->toString());
+
         $incidents = SecurityIncident::with('reporter.tenantProfile')
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($subQuery) use ($search): void {
@@ -66,18 +89,30 @@ class SecurityController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        $blacklist = Blacklist::orderByDesc('banned_at')->get();
-
-        $tenants = User::where('role', 'Tenant')
-            ->with('tenantProfile')
-            ->orderBy('email')
-            ->get(['user_id', 'email']);
-
-        return Inertia::render('admin/security/index', [
-            'visitorLogs' => $visitorLogs,
+        return Inertia::render('admin/security/incidents', [
             'incidents' => $incidents,
+            'filters' => [
+                'search' => $search,
+            ],
+        ]);
+    }
+
+    public function blacklist(Request $request): Response
+    {
+        $search = trim($request->string('search')->toString());
+
+        $blacklist = Blacklist::query()
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($subQuery) use ($search): void {
+                    $subQuery->where('email', 'like', "%{$search}%")
+                        ->orWhere('reason', 'like', "%{$search}%");
+                });
+            })
+            ->orderByDesc('banned_at')
+            ->get();
+
+        return Inertia::render('admin/security/blacklist', [
             'blacklist' => $blacklist,
-            'tenants' => $tenants,
             'filters' => [
                 'search' => $search,
             ],

@@ -2,21 +2,24 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Concerns\PasswordValidationRules;
+use App\Concerns\ProfileValidationRules;
 use App\Http\Controllers\Controller;
 use App\Models\LeaseContract;
 use App\Models\Room;
-use App\Models\TenantProfile;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class TenantController extends Controller
 {
+    use PasswordValidationRules;
+    use ProfileValidationRules;
+
     public function index(Request $request): Response
     {
         $query = User::where('role', 'Tenant')
@@ -50,11 +53,8 @@ class TenantController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'full_name' => ['required', 'string', 'max:150'],
-            'email' => ['required', 'string', 'email', 'max:100', Rule::unique('users', 'email')],
-            'contact_number' => ['required', 'string', 'max:20'],
-            'emergency_contact' => ['nullable', 'string', 'max:150'],
-            'password' => ['required', 'string', 'min:8'],
+            ...$this->profileRules(),
+            'password' => $this->passwordRules(),
         ]);
 
         DB::transaction(function () use ($validated) {
@@ -67,6 +67,7 @@ class TenantController extends Controller
             $user->tenantProfile()->create([
                 'full_name' => $validated['full_name'],
                 'contact_number' => $validated['contact_number'],
+                'contact_address' => $validated['contact_address'],
                 'emergency_contact' => $validated['emergency_contact'] ?? null,
             ]);
         });
@@ -86,10 +87,7 @@ class TenantController extends Controller
     public function update(Request $request, User $tenant): RedirectResponse
     {
         $validated = $request->validate([
-            'full_name' => ['required', 'string', 'max:150'],
-            'email' => ['required', 'string', 'email', 'max:100', Rule::unique('users', 'email')->ignore($tenant->user_id, 'user_id')],
-            'contact_number' => ['required', 'string', 'max:20'],
-            'emergency_contact' => ['nullable', 'string', 'max:150'],
+            ...$this->profileRules($tenant->user_id),
             'is_active' => ['required', 'boolean'],
         ]);
 
@@ -104,6 +102,7 @@ class TenantController extends Controller
                 [
                     'full_name' => $validated['full_name'],
                     'contact_number' => $validated['contact_number'],
+                    'contact_address' => $validated['contact_address'],
                     'emergency_contact' => $validated['emergency_contact'] ?? null,
                 ]
             );
